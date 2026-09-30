@@ -6,13 +6,15 @@ import {
   SlidersHorizontal,
   Search,
   Boxes,
+  Building2,
   Check
 } from 'lucide-react';
 
 export const CatalogView: React.FC = () => {
   const {
-    products,
+    publishedProducts,
     categories,
+    hubs,
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -20,18 +22,24 @@ export const CatalogView: React.FC = () => {
     formatNGN
   } = useApp();
 
+  const [selectedHub, setSelectedHub] = useState<string>('all');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [hasBulkDiscountOnly, setHasBulkDiscountOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc' | 'rating'>('featured');
   const [maxPrice, setMaxPrice] = useState<number>(750000);
 
-  // Filtered and sorted products
+  // Filtered and sorted products using publishedProducts (Single source of truth)
   const filteredProducts = useMemo(() => {
-    return products.filter(product => {
+    return publishedProducts.filter(product => {
+      // Hub filter
+      if (selectedHub !== 'all' && product.hubId !== selectedHub) {
+        return false;
+      }
+
       // Category filter
       if (selectedCategory !== 'all') {
-        const catObj = categories.find(c => c.slug === selectedCategory);
-        if (catObj && product.category !== catObj.name) {
+        const catObj = categories.find(c => c.slug === selectedCategory || c.id === selectedCategory || c.name === selectedCategory);
+        if (catObj && product.categoryId !== catObj.id && product.category !== catObj.name) {
           return false;
         }
       }
@@ -42,7 +50,8 @@ export const CatalogView: React.FC = () => {
         const matchesName = product.name.toLowerCase().includes(query);
         const matchesCategory = product.category.toLowerCase().includes(query);
         const matchesSku = product.sku.toLowerCase().includes(query);
-        if (!matchesName && !matchesCategory && !matchesSku) return false;
+        const matchesHub = product.hubName && product.hubName.toLowerCase().includes(query);
+        if (!matchesName && !matchesCategory && !matchesSku && !matchesHub) return false;
       }
 
       // Stock filter
@@ -65,7 +74,11 @@ export const CatalogView: React.FC = () => {
       if (sortBy === 'rating') return b.rating - a.rating;
       return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
     });
-  }, [products, categories, selectedCategory, searchQuery, inStockOnly, hasBulkDiscountOnly, maxPrice, sortBy]);
+  }, [publishedProducts, categories, selectedHub, selectedCategory, searchQuery, inStockOnly, hasBulkDiscountOnly, maxPrice, sortBy]);
+
+  const availableCategories = selectedHub === 'all'
+    ? categories
+    : categories.filter(c => c.hubId === selectedHub);
 
   return (
     <div style={{ maxWidth: '1380px', margin: '0 auto', padding: '24px', width: '100%' }}>
@@ -84,10 +97,10 @@ export const CatalogView: React.FC = () => {
       }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: '0 0 6px 0' }}>
-            Product Catalog & Inventory
+            Product Catalog & Polymer Inventory
           </h1>
           <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
-            Showing {filteredProducts.length} verified products available for instant order and dispatch
+            Showing {filteredProducts.length} verified polymer items across Nigerian fulfillment hubs.
           </p>
         </div>
 
@@ -129,12 +142,40 @@ export const CatalogView: React.FC = () => {
             <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>Filter Products</h3>
           </div>
 
+          {/* Hub Filter */}
+          <div style={{ marginBottom: '22px' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', marginBottom: '8px' }}>
+              Fulfillment Hub
+            </label>
+            <select
+              value={selectedHub}
+              onChange={e => {
+                setSelectedHub(e.target.value);
+                setSelectedCategory('all');
+              }}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                background: '#ffffff'
+              }}
+            >
+              <option value="all">All Regional Hubs</option>
+              {hubs.map(h => (
+                <option key={h.id} value={h.id}>{h.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Categories Filter */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', marginBottom: '10px' }}>
-              Categories
+              Product Categories
             </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '320px', overflowY: 'auto' }}>
               <button
                 onClick={() => setSelectedCategory('all')}
                 style={{
@@ -153,11 +194,13 @@ export const CatalogView: React.FC = () => {
                 }}
               >
                 <span>All Categories</span>
-                <span>{products.length}</span>
+                <span>{publishedProducts.length}</span>
               </button>
 
-              {categories.map(cat => {
-                const count = products.filter(p => p.category === cat.name).length;
+              {availableCategories.map(cat => {
+                const count = publishedProducts.filter(p => p.categoryId === cat.id || p.category === cat.name).length;
+                const isSelected = selectedCategory === cat.slug || selectedCategory === cat.id || selectedCategory === cat.name;
+
                 return (
                   <button
                     key={cat.id}
@@ -167,9 +210,9 @@ export const CatalogView: React.FC = () => {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       border: 'none',
-                      background: selectedCategory === cat.slug ? '#f0fdfa' : 'transparent',
-                      color: selectedCategory === cat.slug ? '#0f766e' : '#475569',
-                      fontWeight: selectedCategory === cat.slug ? 700 : 500,
+                      background: isSelected ? '#f0fdfa' : 'transparent',
+                      color: isSelected ? '#0f766e' : '#475569',
+                      fontWeight: isSelected ? 700 : 500,
                       fontSize: '0.85rem',
                       cursor: 'pointer',
                       display: 'flex',
@@ -197,17 +240,17 @@ export const CatalogView: React.FC = () => {
             </div>
             <input
               type="range"
-              min="5000"
-              max="750000"
-              step="5000"
+              min="3000"
+              max="500000"
+              step="2000"
               value={maxPrice}
               onChange={e => setMaxPrice(Number(e.target.value))}
               style={{ width: '100%', accentColor: '#0f766e', cursor: 'pointer' }}
             />
           </div>
 
-          {/* Checkbox toggles */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+          {/* Quick Checkbox Toggles */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
               <input
                 type="checkbox"
@@ -215,7 +258,7 @@ export const CatalogView: React.FC = () => {
                 onChange={e => setInStockOnly(e.target.checked)}
                 style={{ accentColor: '#0f766e', width: '16px', height: '16px' }}
               />
-              <span>In Stock Only</span>
+              In Stock Only
             </label>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#334155', cursor: 'pointer' }}>
@@ -225,70 +268,46 @@ export const CatalogView: React.FC = () => {
                 onChange={e => setHasBulkDiscountOnly(e.target.checked)}
                 style={{ accentColor: '#0f766e', width: '16px', height: '16px' }}
               />
-              <span>Bulk Discount Tier Available</span>
+              Has Bulk Wholesale Discount Tier
             </label>
           </div>
-
-          {/* Reset Filters */}
-          <button
-            onClick={() => {
-              setSelectedCategory('all');
-              setInStockOnly(false);
-              setHasBulkDiscountOnly(false);
-              setMaxPrice(750000);
-              setSearchQuery('');
-            }}
-            style={{
-              width: '100%',
-              marginTop: '20px',
-              padding: '10px',
-              background: '#f1f5f9',
-              border: 'none',
-              borderRadius: '8px',
-              color: '#475569',
-              fontWeight: 700,
-              fontSize: '0.8rem',
-              cursor: 'pointer'
-            }}
-          >
-            Reset All Filters
-          </button>
         </aside>
 
-        {/* Right Product Grid */}
+        {/* Product Grid Area */}
         <main>
           {filteredProducts.length === 0 ? (
             <div style={{
               background: '#ffffff',
               borderRadius: '16px',
+              border: '1px solid #e2e8f0',
               padding: '60px 20px',
-              textAlign: 'center',
-              border: '1px solid #e2e8f0'
+              textAlign: 'center'
             }}>
-              <Boxes size={48} color="#cbd5e1" style={{ margin: '0 auto 16px auto' }} />
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0' }}>
-                No products match your filter
+              <Boxes size={48} color="#94a3b8" style={{ marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '0 0 8px 0' }}>
+                No Products Match Your Filter
               </h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px 0' }}>
-                Try adjusting your search query, increasing maximum price, or resetting filters.
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0 0 20px 0' }}>
+                Try clearing search terms or selecting "All Categories" / "All Hubs".
               </p>
               <button
                 onClick={() => {
+                  setSelectedHub('all');
                   setSelectedCategory('all');
                   setSearchQuery('');
-                  setMaxPrice(750000);
                   setInStockOnly(false);
+                  setMaxPrice(750000);
                 }}
                 className="btn-primary"
               >
-                Clear All Filters
+                Reset All Filters
               </button>
             </div>
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: '20px'
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '24px'
             }}>
               {filteredProducts.map(product => (
                 <ProductCard key={product.id} product={product} />

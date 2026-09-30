@@ -3,11 +3,38 @@ export type Role =
   | 'staff'
   | 'admin'
   | 'superadmin'
+  | 'slm'
   | 'warehouse'
   | 'op1_manager'
   | 'op2_manager'
   | 'op3_manager'
   | 'op4_manager';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  fullName: string;
+  role: Role;
+  assignedHubId?: string; // For Hub/SLM scoped personnel
+  assignedOpId?: string; // For OP 1-4 floor leads
+  phone?: string;
+  avatarUrl?: string;
+  createdAt: string;
+}
+
+export interface Hub {
+  id: string; // 'hub-1', 'hub-2', ..., 'hub-7', 'hub-8', etc.
+  name: string; // e.g. "Hub 1 - Polymer & Packaging Center"
+  code: string; // "HUB-1"
+  slmId: string; // "slm-lagos", "slm-abuja"
+  location: string; // Physical location / Depot
+  managerName: string;
+  contactPhone: string;
+  status: 'active' | 'inactive';
+  description: string;
+  defaultOpId?: string; // 'op-1', 'op-2', etc.
+  createdAt: string;
+}
 
 export interface ProductVariant {
   id: string;
@@ -17,20 +44,29 @@ export interface ProductVariant {
   stock: number;
 }
 
+export type ProductAvailability = 'in_stock' | 'low_stock' | 'out_of_stock' | 'discontinued';
+
 export interface Product {
   id: string;
   name: string;
   slug: string;
   sku: string;
-  category: string;
+  category: string; // Category name for fast lookup
+  categoryId?: string; // Category unique ID
+  hubId: string; // e.g. 'hub-1', 'hub-2'
+  hubName?: string; // e.g. 'Hub 1'
+  slmId?: string; // e.g. 'slm-main'
+  assignedOpId: string; // Primary OP responsible: 'op-1', 'op-2', 'op-3', 'op-4', or 'warehouse'
+  warehouseLocation?: string; // Store / warehouse rack or bay location
   description: string;
   basePrice: number;
   discountPrice?: number;
-  stockQuantity: number; // Total available
+  stockQuantity: number; // Total available floor/hub stock
   warehouseStock: number; // Central Store / Warehouse Stock
   opStock: Record<string, number>; // Local stock at each OP: { 'op-1': 40, 'op-2': 10, ... }
-  assignedOpId: string; // Primary OP responsible (e.g. 'op-1', 'op-2', 'op-3', 'op-4')
   minAlertThreshold?: number; // Minimum safe threshold before low stock trigger
+  availability?: ProductAvailability;
+  isPublished?: boolean; // When false, hidden from customer storefront
   isFeatured?: boolean;
   isBestseller?: boolean;
   isNewArrival?: boolean;
@@ -41,17 +77,22 @@ export interface Product {
   variants?: ProductVariant[];
   minBulkOrderQty?: number;
   bulkDiscountPercent?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Category {
   id: string;
+  hubId: string; // Direct link to parent Hub: SLM -> Hub -> Category -> Product
   name: string;
   slug: string;
   iconName: string;
   description: string;
   itemCount: number;
   image: string;
-  assignedOpId?: string; // Which OP point handles this category by default
+  assignedOpId?: string; // Default OP point handling this category
+  status?: 'active' | 'inactive';
+  createdAt?: string;
 }
 
 export interface CartItem {
@@ -90,8 +131,11 @@ export interface OrderItemPrep {
   price: number;
   quantity: number;
   image: string;
+  hubId: string;
+  hubName: string;
   assignedOpId: string;
   assignedOpName: string;
+  warehouseLocation?: string;
   prepStatus: 'pending_pick' | 'picked_and_packed' | 'ready_for_dispatch';
   pickedAt?: string;
   pickedBy?: string;

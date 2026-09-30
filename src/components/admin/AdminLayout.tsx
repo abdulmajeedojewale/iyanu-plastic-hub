@@ -13,7 +13,9 @@ import {
   Layers,
   ChevronDown,
   Warehouse,
-  UserCheck
+  UserCheck,
+  LogOut,
+  FolderTree
 } from 'lucide-react';
 import { Role } from '../../types';
 
@@ -28,6 +30,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     tickets,
     userRole,
     setUserRole,
+    currentUser,
+    logout,
+    switchRole,
+    hubs,
     requisitions,
     lowStockAlerts
   } = useApp();
@@ -41,6 +47,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       id: 'admin-dashboard',
       label: 'Executive Dashboard',
       icon: <LayoutDashboard size={18} />
+    },
+    {
+      id: 'admin-hubs',
+      label: 'Hubs & Categories (SLM)',
+      icon: <Building2 size={18} />,
+      badge: `${hubs.length} HUBS`,
+      badgeColor: '#0f766e'
     },
     {
       id: 'admin-slm',
@@ -77,13 +90,13 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <div style={{ display: 'flex', minHeight: 'calc(100vh - 100px)', background: '#f8fafc' }}>
       {/* Admin Sidebar */}
       <aside style={{
-        width: '270px',
+        width: '275px',
         background: '#0f172a',
         color: '#ffffff',
         padding: '24px 16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px',
+        gap: '18px',
         flexShrink: 0
       }}>
         {/* Hub Title with Logo */}
@@ -92,12 +105,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             src="/logo.png"
             alt="IPS Logo"
             style={{
-              width: '40px',
-              height: '40px',
+              width: '42px',
+              height: '42px',
               borderRadius: '50%',
               objectFit: 'cover',
               border: '2px solid #eab308',
-              boxShadow: '0 2px 8px rgba(234, 179, 8, 0.4)'
+              boxShadow: '0 2px 10px rgba(234, 179, 8, 0.4)'
             }}
           />
           <div>
@@ -110,6 +123,42 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
         </div>
 
+        {/* Authenticated Personnel Badge */}
+        {currentUser && (
+          <div style={{
+            background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+            borderRadius: '10px',
+            padding: '10px 12px',
+            border: '1px solid #334155',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ overflow: 'hidden' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser.fullName}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: '#2dd4bf', fontWeight: 700, textTransform: 'uppercase' }}>
+                {currentUser.role.replace('_', ' ')}
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: 'none',
+                color: '#f87171',
+                borderRadius: '6px',
+                padding: '6px',
+                cursor: 'pointer'
+              }}
+              title="Sign Out"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Role-Based Switcher inside Admin Sidebar */}
         <div style={{
           background: '#1e293b',
@@ -117,12 +166,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           padding: '12px',
           border: '1px solid #334155'
         }}>
-          <label style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>
-            Active Personnel Role:
+          <label style={{ display: 'block', fontSize: '0.68rem', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800, marginBottom: '6px' }}>
+            Active Personnel Perspective:
           </label>
           <select
             value={userRole}
-            onChange={e => setUserRole(e.target.value as Role)}
+            onChange={e => switchRole(e.target.value as Role)}
             style={{
               width: '100%',
               background: '#0f172a',
@@ -137,6 +186,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           >
             <option value="superadmin">👑 Super Admin / General Manager</option>
             <option value="admin">🏢 Executive Admin</option>
+            <option value="slm">📦 SLM Director</option>
             <option value="warehouse">🏭 Central Warehouse Lead</option>
             <option value="op1_manager">📦 OP 1 - Heavy Storage Lead</option>
             <option value="op2_manager">🗑️ OP 2 - Sanitation Lead</option>
@@ -193,16 +243,16 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </nav>
 
         {/* Switch to Customer Storefront button */}
-        <div style={{ borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+        <div style={{ borderTop: '1px solid #1e293b', paddingTop: '14px' }}>
           <button
             onClick={() => {
-              setUserRole('customer');
               setActiveView('store');
             }}
             style={{
               width: '100%',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px',
               padding: '10px 14px',
               borderRadius: '8px',

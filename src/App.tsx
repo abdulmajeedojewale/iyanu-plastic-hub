@@ -12,10 +12,12 @@ import { CustomerPortalView } from './components/CustomerPortalView';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { BusinessDashboard } from './components/admin/BusinessDashboard';
 import { ProductManager } from './components/admin/ProductManager';
+import { HubManager } from './components/admin/HubManager';
 import { CRMManager } from './components/admin/CRMManager';
 import { SLATicketManager } from './components/admin/SLATicketManager';
 import { OrderManager } from './components/admin/OrderManager';
 import { SLMManager } from './components/admin/SLMManager';
+import { AdminLoginModal } from './components/admin/AdminLoginModal';
 import {
   Layers,
   PhoneCall,
@@ -27,7 +29,7 @@ import {
 } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { activeView, setActiveView } = useApp();
+  const { activeView, setActiveView, setIsLoginModalOpen } = useApp();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   return (
@@ -46,6 +48,11 @@ const MainContent: React.FC = () => {
         {activeView === 'admin-dashboard' && (
           <AdminLayout>
             <BusinessDashboard />
+          </AdminLayout>
+        )}
+        {activeView === 'admin-hubs' && (
+          <AdminLayout>
+            <HubManager />
           </AdminLayout>
         )}
         {activeView === 'admin-slm' && (
@@ -142,8 +149,8 @@ const MainContent: React.FC = () => {
                   </a>
                 </li>
                 <li>
-                  <a onClick={() => setActiveView('admin-dashboard')} style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'none', fontWeight: 700 }}>
-                    Staff & Admin Portal Login
+                  <a onClick={() => setIsLoginModalOpen(true)} style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'none', fontWeight: 700 }}>
+                    👑 Staff & Admin Portal Login
                   </a>
                 </li>
               </ul>
@@ -157,11 +164,11 @@ const MainContent: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem', color: '#94a3b8' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <MapPin size={16} color="#2dd4bf" style={{ flexShrink: 0, marginTop: '3px' }} />
-                  <span><strong>Lagos Hub:</strong> Plot 12 Commercial Avenue, Ikeja Industrial Estate, Lagos</span>
+                  <span><strong>Hub 1 (Lagos):</strong> Plot 12 Commercial Avenue, Ikeja Industrial Estate</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <MapPin size={16} color="#2dd4bf" style={{ flexShrink: 0, marginTop: '3px' }} />
-                  <span><strong>Abuja Depot:</strong> Idu Industrial Layout, Phase 2, Abuja FCT</span>
+                  <span><strong>Hub 3 (Abuja Depot):</strong> Idu Industrial Layout, Phase 2, Abuja FCT</span>
                 </div>
               </div>
             </div>
@@ -203,7 +210,7 @@ const MainContent: React.FC = () => {
               © {new Date().getFullYear()} IYANU PLASTIC & GENERAL MERCHANDISE LTD. All rights reserved.
             </div>
             <div>
-              Payments Powered by Paystack & Flutterwave NGN • Built with Antigravity Architecture
+              Powered by Supabase Auth & PostgreSQL Realtime Single Source of Truth
             </div>
           </div>
         </footer>
@@ -220,6 +227,7 @@ const MainContent: React.FC = () => {
           setActiveView('order-tracking');
         }}
       />
+      <AdminLoginModal />
       <ToastContainer />
     </div>
   );

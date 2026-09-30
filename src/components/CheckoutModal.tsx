@@ -259,7 +259,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         background: '#ffffff'
                       }}
                     >
-                      {NIGERIAN_STATES.map(s => (
+                      {NIGERIAN_STATES.map((s: string) => (
                         <option key={s} value={s}>
                           {s}
                         </option>

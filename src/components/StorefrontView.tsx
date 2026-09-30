@@ -11,7 +11,8 @@ import {
   Boxes,
   ShoppingBag,
   Sparkles,
-  Layers
+  Layers,
+  Building2
 } from 'lucide-react';
 
 interface StorefrontViewProps {
@@ -20,16 +21,17 @@ interface StorefrontViewProps {
 
 export const StorefrontView: React.FC<StorefrontViewProps> = () => {
   const {
-    products,
+    publishedProducts,
     categories,
+    hubs,
     setSelectedCategory,
     setActiveView,
     formatNGN
   } = useApp();
 
-  const featuredProducts = products.filter(p => p.isFeatured).slice(0, 4);
-  const bestsellers = products.filter(p => p.isBestseller).slice(0, 4);
-  const newArrivals = products.filter(p => p.isNewArrival).slice(0, 4);
+  const featuredProducts = publishedProducts.filter(p => p.isFeatured).slice(0, 4);
+  const bestsellers = publishedProducts.filter(p => p.isBestseller).slice(0, 4);
+  const newArrivals = publishedProducts.slice(0, 4);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', paddingBottom: '60px' }}>
@@ -56,7 +58,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
           pointerEvents: 'none'
         }} />
 
-        <div style={{ maxWidth: '680px', position: 'relative', zIndex: 2 }}>
+        <div style={{ maxWidth: '720px', position: 'relative', zIndex: 2 }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -92,7 +94,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
             marginBottom: '28px',
             fontWeight: 400
           }}>
-            From heavy-duty 120L mobile waste bins and food-grade storage drums to commercial furniture, electrical fittings, and industrial logistics pallets. Factory prices, verified polymer durability, guaranteed delivery.
+            From balloons, animated & ordinary buckets, bowls, PET bottles and packaging to heavy-duty 120L waste bins and commercial furniture. Factory prices, verified polymer durability, guaranteed delivery.
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
@@ -123,7 +125,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
 
             <button
               onClick={() => {
-                setSelectedCategory('plastic-products');
+                setSelectedCategory('pet-bottles');
                 setActiveView('catalog');
               }}
               style={{
@@ -138,7 +140,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
                 backdropFilter: 'blur(8px)'
               }}
             >
-              Heavy-Duty Drums & Bins
+              Shop Hub 1 PET Packaging & Drums
             </button>
           </div>
         </div>
@@ -178,8 +180,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                 Interstate Delivery SLA
               </h4>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                Express dispatches to all 36 Nigerian states & FCT Abuja.
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                24-48hr dispatch across Lagos, Abuja, Kano, Port Harcourt
               </p>
             </div>
           </div>
@@ -198,7 +200,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
               width: '48px',
               height: '48px',
               borderRadius: '12px',
-              background: '#fffbeb',
+              background: '#fef3c7',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -211,8 +213,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                 100% Virgin Polymer
               </h4>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                Heavy impact & UV-proof materials engineered for longevity.
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                High-impact, UV-stabilized, shatterproof industrial grade
               </p>
             </div>
           </div>
@@ -242,10 +244,10 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
             </div>
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
-                Wholesale Price Tiers
+                Bulk Wholesale Discounts
               </h4>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                Bulk volume price discounts for businesses, schools & hotels.
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                Tiered commercial pricing up to 15% off large orders
               </p>
             </div>
           </div>
@@ -264,160 +266,164 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
               width: '48px',
               height: '48px',
               borderRadius: '12px',
-              background: '#faf5ff',
+              background: '#fdf2f8',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#7c3aed',
+              color: '#db2777',
               flexShrink: 0
             }}>
-              <Zap size={24} />
+              <PhoneCall size={24} />
             </div>
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
-                Dedicated SLA Support
+                Direct Customer SLA Desk
               </h4>
-              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                Real-time support ticket resolution within guaranteed timeframes.
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                Guaranteed rapid response on quotes, orders & inquiries
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Category Grid Section */}
+      {/* Featured Categories (Hub 1 and Regional Hub categories) */}
       <section style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 24px', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-              Shop by Category
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
+              SLM Hub Category Network
+            </div>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+              Shop by Product Category
             </h2>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '4px 0 0 0' }}>
-              Explore our core plastic manufacturing and general merchandise departments
-            </p>
           </div>
+
           <button
-            onClick={() => setActiveView('catalog')}
+            onClick={() => {
+              setSelectedCategory('all');
+              setActiveView('catalog');
+            }}
             style={{
               background: 'none',
               border: 'none',
               color: '#0f766e',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '0.9rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px'
+              gap: '6px',
+              cursor: 'pointer'
             }}
           >
-            View All ({categories.length}) <ArrowRight size={16} />
+            View All Categories <ArrowRight size={16} />
           </button>
         </div>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-          gap: '16px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px'
         }}>
-          {categories.map(cat => (
-            <div
-              key={cat.id}
-              onClick={() => {
-                setSelectedCategory(cat.slug);
-                setActiveView('catalog');
-              }}
-              style={{
-                background: '#ffffff',
-                borderRadius: '16px',
-                border: '1px solid #e2e8f0',
-                padding: '20px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                height: '190px',
-                position: 'relative',
-                overflow: 'hidden'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.borderColor = '#0f766e';
-                e.currentTarget.style.boxShadow = '0 10px 20px rgba(15, 118, 110, 0.1)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '10px',
-                background: '#f0fdfa',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#0f766e',
-                marginBottom: '12px'
-              }}>
-                <Boxes size={22} />
-              </div>
+          {categories.slice(0, 8).map(cat => {
+            const count = publishedProducts.filter(p => p.categoryId === cat.id || p.category === cat.name).length;
+            const hub = hubs.find(h => h.id === cat.hubId);
 
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0' }}>
-                  {cat.name}
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, lineHeight: 1.3 }}>
-                  {cat.description}
-                </p>
+            return (
+              <div
+                key={cat.id}
+                onClick={() => {
+                  setSelectedCategory(cat.slug);
+                  setActiveView('catalog');
+                }}
+                style={{
+                  background: '#ffffff',
+                  borderRadius: '16px',
+                  border: '1px solid #e2e8f0',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)';
+                }}
+              >
+                <div style={{ height: '140px', overflow: 'hidden', position: 'relative' }}>
+                  <img
+                    src={cat.image}
+                    alt={cat.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  {hub && (
+                    <span style={{
+                      position: 'absolute',
+                      top: '8px',
+                      left: '8px',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      color: '#2dd4bf',
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      padding: '2px 6px',
+                      borderRadius: '4px'
+                    }}>
+                      {hub.code}
+                    </span>
+                  )}
+                </div>
+                <div style={{ padding: '16px' }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0' }}>
+                    {cat.name}
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    {count} Products in Catalog
+                  </span>
+                </div>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f766e' }}>
-                  {cat.itemCount}+ products
-                </span>
-                <ArrowRight size={14} color="#0f766e" />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       {/* Featured Products Section */}
       <section style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 24px', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', marginBottom: '4px' }}>
-              <Zap size={14} /> HOT PICKS
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
+              Handpicked Essentials
             </div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-              Featured Commercial Plastics
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+              Featured Factory Products
             </h2>
           </div>
+
           <button
             onClick={() => setActiveView('catalog')}
             style={{
               background: 'none',
               border: 'none',
               color: '#0f766e',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '0.9rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px'
+              gap: '6px',
+              cursor: 'pointer'
             }}
           >
-            Explore Catalog <ArrowRight size={16} />
+            Browse All <ArrowRight size={16} />
           </button>
         </div>
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: '20px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '24px'
         }}>
           {featuredProducts.map(product => (
             <ProductCard key={product.id} product={product} />
@@ -425,83 +431,31 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
         </div>
       </section>
 
-      {/* Wholesale & Commercial Bulk Quotation Banner */}
-      <section style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 24px', width: '100%' }}>
-        <div style={{
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-          borderRadius: '20px',
-          padding: '36px 40px',
-          color: '#ffffff',
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '24px',
-          border: '1px solid #334155',
-          boxShadow: '0 15px 30px rgba(0,0,0,0.2)'
-        }}>
-          <div style={{ maxWidth: '600px' }}>
-            <span className="badge badge-amber" style={{ marginBottom: '12px' }}>
-              BULK BUYERS & CONTRACTORS
-            </span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: 900, margin: '8px 0 10px 0', lineHeight: 1.2 }}>
-              Ordering 50+ Units for Your Business, Facility or School?
-            </h3>
-            <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-              Receive direct factory wholesale pricing, customized logo printing, flexible invoicing terms, and dedicated haulage trailer delivery straight to your site in Nigeria.
-            </p>
+      {/* Bestsellers Section */}
+      {bestsellers.length > 0 && (
+        <section style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 24px', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px' }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                High Demand in Nigeria
+              </div>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Bestselling Polymer Supplies
+              </h2>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={() => setActiveView('customer-portal')}
-              style={{
-                background: '#0f766e',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '10px',
-                padding: '14px 24px',
-                fontSize: '0.9rem',
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <PhoneCall size={18} />
-              <span>Request Wholesale Quote / SLA</span>
-            </button>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: 'center' }}>
-              Or Call Hotline: +234 (0) 803 IYANU-NIG
-            </span>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px'
+          }}>
+            {bestsellers.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
-        </div>
-      </section>
-
-      {/* Best-Sellers & General Merchandise */}
-      <section style={{ maxWidth: '1380px', margin: '0 auto', padding: '0 24px', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
-              Best-Selling Household & Merchandise
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '4px 0 0 0' }}>
-              Highest rated by Nigerian businesses, event organizers, and households
-            </p>
-          </div>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-          gap: '20px'
-        }}>
-          {bestsellers.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 };

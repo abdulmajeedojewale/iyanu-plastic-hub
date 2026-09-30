@@ -3,11 +3,13 @@ import confetti from 'canvas-confetti';
 import {
   Product,
   Category,
+  Hub,
   CartItem,
   Order,
   CRMLead,
   SupportTicket,
   Role,
+  AuthUser,
   OrderStatus,
   TicketPriority,
   TicketStatus,
@@ -22,6 +24,7 @@ import {
   OrderItemPrep
 } from '../types';
 import {
+  INITIAL_HUBS,
   INITIAL_CATEGORIES,
   INITIAL_PRODUCTS,
   INITIAL_ORDERS,
@@ -31,6 +34,7 @@ import {
   INITIAL_REQUISITIONS,
   INITIAL_LOW_STOCK_ALERTS
 } from '../data/mockData';
+import { authService, syncService, DEMO_ADMIN_USERS } from '../services/supabase';
 
 interface Toast {
   id: string;
@@ -40,26 +44,55 @@ interface Toast {
 }
 
 interface AppContextType {
-  // Navigation & Role
+  // Navigation & Active View
   activeView: string;
   setActiveView: (view: string) => void;
+
+  // Authentication & RBAC
+  currentUser: AuthUser | null;
+  isAuthenticated: boolean;
   userRole: Role;
   setUserRole: (role: Role) => void;
+  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ success: boolean; message: string }>;
+  isLoginModalOpen: boolean;
+  setIsLoginModalOpen: (open: boolean) => void;
+  switchRole: (role: Role) => void;
 
-  // Catalog & Inventory
+  // Hierarchical Hub Management (SLM -> Hubs -> Product Categories -> Products)
+  hubs: Hub[];
+  selectedHubFilter: string;
+  setSelectedHubFilter: (hubId: string) => void;
+  addHub: (hubData: Omit<Hub, 'id' | 'createdAt'>) => Hub;
+  updateHub: (id: string, updates: Partial<Hub>) => void;
+  toggleHubStatus: (id: string) => void;
+  deleteHub: (id: string) => void;
+
+  // Hierarchical Product Categories per Hub
   categories: Category[];
+  selectedCategory: string;
+  setSelectedCategory: (catIdOrName: string) => void;
+  addCategory: (catData: Omit<Category, 'id' | 'createdAt' | 'itemCount'>) => Category;
+  updateCategory: (id: string, updates: Partial<Category>) => void;
+  deleteCategory: (id: string) => void;
+  reassignCategoryToHub: (categoryId: string, targetHubId: string) => void;
+  reassignCategoryToOp: (categoryId: string, newOpId: string) => void;
+
+  // Products & Single Source of Truth
   products: Product[];
+  publishedProducts: Product[];
   selectedProduct: Product | null;
   setSelectedProduct: (p: Product | null) => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
-  selectedCategory: string;
-  setSelectedCategory: (cat: string) => void;
-  addProduct: (product: Omit<Product, 'id' | 'rating' | 'reviewCount'>) => void;
+  addProduct: (product: Omit<Product, 'id' | 'rating' | 'reviewCount'>) => Product;
   updateProduct: (id: string, updates: Partial<Product>) => void;
+  toggleProductPublished: (id: string) => void;
+  deleteProduct: (id: string) => void;
   updateStock: (productId: string, newStock: number, variantId?: string) => void;
 
-  // SLM & Operations
+  // SLM & Operations Pipeline
   slmUnits: SLMUnit[];
   requisitions: GoodsRequisition[];
   lowStockAlerts: LowStockAlert[];
@@ -82,7 +115,6 @@ interface AppContextType {
       rejectionReason?: string;
     }
   ) => void;
-  reassignCategoryToOp: (categoryId: string, newOpId: string) => void;
   updateOpDetails: (opId: string, updates: Partial<SLMUnit>) => void;
   updateItemPrepStatus: (
     orderId: string,
@@ -93,7 +125,7 @@ interface AppContextType {
   generateRequisitionFromLowStock: (alertId: string, requestedQty: number) => void;
   transferStockToOp: (productId: string, targetOpId: string, qty: number) => void;
 
-  // Cart & Wishlist
+  // Cart & Shopping
   cart: CartItem[];
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
@@ -106,7 +138,7 @@ interface AppContextType {
   wishlist: string[];
   toggleWishlist: (productId: string) => void;
 
-  // Checkout & Orders
+  // Orders & Fulfillment
   orders: Order[];
   placeOrder: (orderData: {
     fullName: string;
@@ -133,7 +165,7 @@ interface AppContextType {
   updateLeadStatus: (leadId: string, status: LeadStatus) => void;
   addLeadInteraction: (leadId: string, type: 'call' | 'whatsapp' | 'email' | 'meeting', notes: string) => void;
 
-  // SLA & Tickets
+  // SLA & Support Tickets
   tickets: SupportTicket[];
   createTicket: (data: {
     subject: string;
@@ -150,119 +182,156 @@ interface AppContextType {
   addTicketMessage: (ticketId: string, content: string, sender: 'customer' | 'staff') => void;
   escalateTicket: (ticketId: string, reason: string) => void;
 
-  // Notifications
+  // Notifications & Currency Helper
   toasts: Toast[];
   addToast: (type: Toast['type'], title: string, message: string) => void;
   removeToast: (id: string) => void;
-
-  // Nigerian Currency Formatter Helper
   formatNGN: (amount: number) => string;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load state with localStorage fallback
+  // Load initial states with localStorage synchronization for offline capability & fast preview
+  const [hubs, setHubs] = useState<Hub[]>(() => {
+    const saved = localStorage.getItem('iyanu_hubs_v2');
+    return saved ? JSON.parse(saved) : INITIAL_HUBS;
+  });
+
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('iyanu_categories');
+    const saved = localStorage.getItem('iyanu_categories_v2');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
 
+  const [products, setProducts] = useState<Product[]>(() => {
+    const saved = localStorage.getItem('iyanu_products_v2');
+    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+  });
+
   const [slmUnits, setSlmUnits] = useState<SLMUnit[]>(() => {
-    const saved = localStorage.getItem('iyanu_slm_units');
+    const saved = localStorage.getItem('iyanu_slm_units_v2');
     return saved ? JSON.parse(saved) : INITIAL_SLM_UNITS;
   });
 
   const [requisitions, setRequisitions] = useState<GoodsRequisition[]>(() => {
-    const saved = localStorage.getItem('iyanu_requisitions');
+    const saved = localStorage.getItem('iyanu_requisitions_v2');
     return saved ? JSON.parse(saved) : INITIAL_REQUISITIONS;
   });
 
   const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlert[]>(() => {
-    const saved = localStorage.getItem('iyanu_low_stock_alerts');
+    const saved = localStorage.getItem('iyanu_low_stock_alerts_v2');
     return saved ? JSON.parse(saved) : INITIAL_LOW_STOCK_ALERTS;
   });
 
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('iyanu_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('iyanu_orders');
+    const saved = localStorage.getItem('iyanu_orders_v2');
     return saved ? JSON.parse(saved) : INITIAL_ORDERS;
   });
 
   const [leads, setLeads] = useState<CRMLead[]>(() => {
-    const saved = localStorage.getItem('iyanu_leads');
+    const saved = localStorage.getItem('iyanu_leads_v2');
     return saved ? JSON.parse(saved) : INITIAL_LEADS;
   });
 
   const [tickets, setTickets] = useState<SupportTicket[]>(() => {
-    const saved = localStorage.getItem('iyanu_tickets');
+    const saved = localStorage.getItem('iyanu_tickets_v2');
     return saved ? JSON.parse(saved) : INITIAL_TICKETS;
   });
 
   const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('iyanu_cart');
+    const saved = localStorage.getItem('iyanu_cart_v2');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [wishlist, setWishlist] = useState<string[]>(() => {
-    const saved = localStorage.getItem('iyanu_wishlist');
+    const saved = localStorage.getItem('iyanu_wishlist_v2');
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Auth & Session State
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    const saved = localStorage.getItem('iyanu_auth_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [userRole, setUserRole] = useState<Role>(() => {
+    const savedUser = localStorage.getItem('iyanu_auth_user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser).role || 'customer';
+      } catch {
+        return 'customer';
+      }
+    }
+    return 'customer';
+  });
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [activeView, setActiveView] = useState<string>('store');
-  const [userRole, setUserRole] = useState<Role>('customer');
+  const [selectedHubFilter, setSelectedHubFilter] = useState<string>('all');
   const [selectedOpFilter, setSelectedOpFilter] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedTrackingOrder, setSelectedTrackingOrder] = useState<Order | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Derived published products list for customer storefront (Single Source of Truth)
+  const publishedProducts = products.filter(p => p.isPublished !== false);
 
   // Sync to localStorage
   useEffect(() => {
-    localStorage.setItem('iyanu_categories', JSON.stringify(categories));
+    localStorage.setItem('iyanu_hubs_v2', JSON.stringify(hubs));
+  }, [hubs]);
+
+  useEffect(() => {
+    localStorage.setItem('iyanu_categories_v2', JSON.stringify(categories));
   }, [categories]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_slm_units', JSON.stringify(slmUnits));
-  }, [slmUnits]);
-
-  useEffect(() => {
-    localStorage.setItem('iyanu_requisitions', JSON.stringify(requisitions));
-  }, [requisitions]);
-
-  useEffect(() => {
-    localStorage.setItem('iyanu_low_stock_alerts', JSON.stringify(lowStockAlerts));
-  }, [lowStockAlerts]);
-
-  useEffect(() => {
-    localStorage.setItem('iyanu_products', JSON.stringify(products));
+    localStorage.setItem('iyanu_products_v2', JSON.stringify(products));
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_orders', JSON.stringify(orders));
+    localStorage.setItem('iyanu_slm_units_v2', JSON.stringify(slmUnits));
+  }, [slmUnits]);
+
+  useEffect(() => {
+    localStorage.setItem('iyanu_requisitions_v2', JSON.stringify(requisitions));
+  }, [requisitions]);
+
+  useEffect(() => {
+    localStorage.setItem('iyanu_low_stock_alerts_v2', JSON.stringify(lowStockAlerts));
+  }, [lowStockAlerts]);
+
+  useEffect(() => {
+    localStorage.setItem('iyanu_orders_v2', JSON.stringify(orders));
   }, [orders]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_leads', JSON.stringify(leads));
+    localStorage.setItem('iyanu_leads_v2', JSON.stringify(leads));
   }, [leads]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_tickets', JSON.stringify(tickets));
+    localStorage.setItem('iyanu_tickets_v2', JSON.stringify(tickets));
   }, [tickets]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_cart', JSON.stringify(cart));
+    localStorage.setItem('iyanu_cart_v2', JSON.stringify(cart));
   }, [cart]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_wishlist', JSON.stringify(wishlist));
+    localStorage.setItem('iyanu_wishlist_v2', JSON.stringify(wishlist));
   }, [wishlist]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('iyanu_auth_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('iyanu_auth_user');
+    }
+  }, [currentUser]);
 
   // Periodic SLA Breach Checker
   useEffect(() => {
@@ -315,24 +384,389 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Helper to find OP for a product or category
-  const getOpForProduct = (product: Product): { opId: string; opName: string } => {
-    if (product.assignedOpId) {
-      const unit = slmUnits.find(u => u.id === product.assignedOpId);
-      if (unit) return { opId: unit.id, opName: unit.name };
-    }
-    const category = categories.find(c => c.name === product.category);
-    if (category?.assignedOpId) {
-      const unit = slmUnits.find(u => u.id === category.assignedOpId);
-      if (unit) return { opId: unit.id, opName: unit.name };
-    }
-    return { opId: 'op-1', opName: 'OP 1 - Heavy Storage & Drums' };
+  // Helper to find Hub & OP for a product
+  const getHubAndOpForProduct = (product: Product): { hubId: string; hubName: string; opId: string; opName: string; warehouseLocation: string } => {
+    let hub = hubs.find(h => h.id === product.hubId);
+    if (!hub) hub = hubs[0] || { id: 'hub-1', name: 'Hub 1', code: 'HUB-1', slmId: 'slm-lagos', location: 'Ikeja', managerName: 'Babatunde', contactPhone: '', status: 'active', description: '', createdAt: '' };
+
+    let opId = product.assignedOpId || hub.defaultOpId || 'op-1';
+    let op = slmUnits.find(u => u.id === opId);
+    let opName = op ? op.name : `OP Unit (${opId.toUpperCase()})`;
+
+    return {
+      hubId: hub.id,
+      hubName: hub.name,
+      opId,
+      opName,
+      warehouseLocation: product.warehouseLocation || `${hub.name} - Bay 01`
+    };
   };
 
-  // ====================================================
-  // SLM Operations & Goods Requisition Engine
-  // ====================================================
+  // ==========================================
+  // AUTHENTICATION & RBAC
+  // ==========================================
+  const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    const res = await authService.signIn(email, pass);
+    if (res.error || !res.user) {
+      addToast('error', 'Login Failed', res.error || 'Authentication failed');
+      return { success: false, error: res.error || 'Authentication failed' };
+    }
 
+    setCurrentUser(res.user);
+    setUserRole(res.user.role);
+    setIsLoginModalOpen(false);
+
+    // Route user based on role
+    if (res.user.role === 'customer') {
+      setActiveView('store');
+    } else if (res.user.role === 'slm' || res.user.role.startsWith('op') || res.user.role === 'warehouse') {
+      setActiveView('admin-slm');
+    } else {
+      setActiveView('admin-dashboard');
+    }
+
+    addToast('success', `Welcome back, ${res.user.fullName}`, `Logged in as ${res.user.role.toUpperCase()}`);
+    return { success: true };
+  };
+
+  const logout = async () => {
+    await authService.signOut();
+    setCurrentUser(null);
+    setUserRole('customer');
+    setActiveView('store');
+    addToast('info', 'Logged Out', 'You have been securely signed out.');
+  };
+
+  const resetPassword = async (email: string) => {
+    return authService.resetPassword(email);
+  };
+
+  const switchRole = (role: Role) => {
+    setUserRole(role);
+    if (currentUser) {
+      setCurrentUser({ ...currentUser, role });
+    } else {
+      // Find matching demo user for seamless admin preview
+      const demo = DEMO_ADMIN_USERS.find(d => d.role === role);
+      if (demo) {
+        setCurrentUser(demo);
+      }
+    }
+  };
+
+  // ==========================================
+  // HIERARCHICAL HUB MANAGEMENT
+  // ==========================================
+  const addHub = (hubData: Omit<Hub, 'id' | 'createdAt'>): Hub => {
+    const hubCount = hubs.length + 1;
+    const id = `hub-${Date.now()}`;
+    const newHub: Hub = {
+      ...hubData,
+      id,
+      code: hubData.code || `HUB-${hubCount}`,
+      createdAt: new Date().toISOString()
+    };
+
+    setHubs(prev => [...prev, newHub]);
+    syncService.syncHub(newHub);
+
+    addToast('success', 'New Hub Created', `${newHub.name} has been added to the SLM network.`);
+    return newHub;
+  };
+
+  const updateHub = (id: string, updates: Partial<Hub>) => {
+    setHubs(prev =>
+      prev.map(h => {
+        if (h.id === id) {
+          const updated = { ...h, ...updates, updatedAt: new Date().toISOString() };
+          syncService.syncHub(updated);
+          return updated;
+        }
+        return h;
+      })
+    );
+    addToast('success', 'Hub Updated', 'Hub configurations saved successfully.');
+  };
+
+  const toggleHubStatus = (id: string) => {
+    setHubs(prev =>
+      prev.map(h => {
+        if (h.id === id) {
+          const newStatus: 'active' | 'inactive' = h.status === 'active' ? 'inactive' : 'active';
+          const updated: Hub = { ...h, status: newStatus };
+          syncService.syncHub(updated);
+          addToast('info', 'Hub Status Changed', `${h.name} is now ${newStatus.toUpperCase()}.`);
+          return updated;
+        }
+        return h;
+      })
+    );
+  };
+
+  const deleteHub = (id: string) => {
+    // Check if products exist under this hub
+    const hasProducts = products.some(p => p.hubId === id);
+    if (hasProducts) {
+      addToast('error', 'Cannot Delete Hub', 'This Hub contains active products. Please reassign products first.');
+      return;
+    }
+    setHubs(prev => prev.filter(h => h.id !== id));
+    addToast('info', 'Hub Removed', 'Hub removed from network.');
+  };
+
+  // ==========================================
+  // HIERARCHICAL CATEGORY MANAGEMENT (PER HUB)
+  // ==========================================
+  const addCategory = (catData: Omit<Category, 'id' | 'createdAt' | 'itemCount'>): Category => {
+    const id = `cat-${Date.now()}`;
+    const newCat: Category = {
+      ...catData,
+      id,
+      itemCount: 0,
+      status: catData.status || 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    setCategories(prev => [...prev, newCat]);
+    syncService.syncCategory(newCat);
+
+    // Update SLM unit assigned categories if applicable
+    if (newCat.assignedOpId) {
+      setSlmUnits(prev =>
+        prev.map(u =>
+          u.id === newCat.assignedOpId
+            ? { ...u, assignedCategories: Array.from(new Set([...u.assignedCategories, newCat.name])) }
+            : u
+        )
+      );
+    }
+
+    addToast('success', 'Product Category Created', `Category "${newCat.name}" added to Hub.`);
+    return newCat;
+  };
+
+  const updateCategory = (id: string, updates: Partial<Category>) => {
+    setCategories(prev =>
+      prev.map(c => {
+        if (c.id === id) {
+          const oldName = c.name;
+          const updated = { ...c, ...updates };
+          syncService.syncCategory(updated);
+
+          // If category name was renamed, update linked products
+          if (updates.name && updates.name !== oldName) {
+            setProducts(pList =>
+              pList.map(p => (p.category === oldName || p.categoryId === id ? { ...p, category: updates.name! } : p))
+            );
+          }
+          return updated;
+        }
+        return c;
+      })
+    );
+    addToast('success', 'Category Saved', 'Product category details updated.');
+  };
+
+  const deleteCategory = (id: string) => {
+    const category = categories.find(c => c.id === id);
+    if (!category) return;
+
+    // Check if products exist in this category
+    const hasProducts = products.some(p => p.categoryId === id || p.category === category.name);
+    if (hasProducts) {
+      addToast('error', 'Cannot Delete Category', 'This category contains products. Reassign or delete products first.');
+      return;
+    }
+
+    setCategories(prev => prev.filter(c => c.id !== id));
+    addToast('info', 'Category Deleted', `Category "${category.name}" removed.`);
+  };
+
+  const reassignCategoryToHub = (categoryId: string, targetHubId: string) => {
+    const targetHub = hubs.find(h => h.id === targetHubId);
+    if (!targetHub) return;
+
+    setCategories(prev =>
+      prev.map(c => {
+        if (c.id === categoryId) {
+          const updated = { ...c, hubId: targetHubId };
+          syncService.syncCategory(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+
+    // Also reassign all products under this category
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.categoryId === categoryId) {
+          const updated = { ...p, hubId: targetHubId, hubName: targetHub.name };
+          syncService.syncProduct(updated);
+          return updated;
+        }
+        return p;
+      })
+    );
+
+    addToast('success', 'Hub Reassignment Complete', `Category moved to ${targetHub.name}.`);
+  };
+
+  const reassignCategoryToOp = (categoryId: string, newOpId: string) => {
+    setCategories(prev =>
+      prev.map(c => {
+        if (c.id === categoryId) {
+          const updated = { ...c, assignedOpId: newOpId };
+          syncService.syncCategory(updated);
+          return updated;
+        }
+        return c;
+      })
+    );
+
+    const category = categories.find(c => c.id === categoryId);
+    const targetOp = slmUnits.find(u => u.id === newOpId);
+
+    if (category) {
+      // Update products in this category
+      setProducts(prev =>
+        prev.map(p => {
+          if (p.categoryId === categoryId || p.category === category.name) {
+            const updated = { ...p, assignedOpId: newOpId };
+            syncService.syncProduct(updated);
+            return updated;
+          }
+          return p;
+        })
+      );
+
+      // Update SLM unit category assignments
+      setSlmUnits(prev =>
+        prev.map(u => {
+          if (u.id === newOpId) {
+            return {
+              ...u,
+              assignedCategories: Array.from(new Set([...u.assignedCategories, category.name]))
+            };
+          } else {
+            return {
+              ...u,
+              assignedCategories: u.assignedCategories.filter(name => name !== category.name)
+            };
+          }
+        })
+      );
+    }
+
+    addToast(
+      'success',
+      'Category Reassigned to OP',
+      `Category "${category?.name || categoryId}" is now managed by ${targetOp?.name || newOpId}.`
+    );
+  };
+
+  // ==========================================
+  // PRODUCT MANAGEMENT (SINGLE SOURCE OF TRUTH)
+  // ==========================================
+  const addProduct = (newProdData: Omit<Product, 'id' | 'rating' | 'reviewCount'>): Product => {
+    const id = `prod-${Date.now()}`;
+    const hubInfo = getHubAndOpForProduct(newProdData as Product);
+
+    const newProduct: Product = {
+      ...newProdData,
+      id,
+      hubId: newProdData.hubId || hubInfo.hubId,
+      hubName: hubInfo.hubName,
+      assignedOpId: newProdData.assignedOpId || hubInfo.opId,
+      warehouseLocation: newProdData.warehouseLocation || hubInfo.warehouseLocation,
+      rating: 5.0,
+      reviewCount: 0,
+      isPublished: newProdData.isPublished !== false,
+      warehouseStock: newProdData.warehouseStock || 100,
+      opStock: newProdData.opStock || { [hubInfo.opId]: newProdData.stockQuantity || 30 },
+      minAlertThreshold: newProdData.minAlertThreshold || 20,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setProducts(prev => [newProduct, ...prev]);
+    syncService.syncProduct(newProduct);
+
+    // Update category item count
+    setCategories(prev =>
+      prev.map(c => (c.name === newProduct.category || c.id === newProduct.categoryId ? { ...c, itemCount: c.itemCount + 1 } : c))
+    );
+
+    addToast('success', 'Product Created & Live', `${newProduct.name} added to catalog.`);
+    return newProduct;
+  };
+
+  const updateProduct = (id: string, updates: Partial<Product>) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === id) {
+          const updated = { ...p, ...updates, updatedAt: new Date().toISOString() };
+          syncService.syncProduct(updated);
+          return updated;
+        }
+        return p;
+      })
+    );
+    addToast('success', 'Catalog Updated', 'Product details saved.');
+  };
+
+  const toggleProductPublished = (id: string) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === id) {
+          const isPublished = p.isPublished === false ? true : false;
+          const updated: Product = { ...p, isPublished, updatedAt: new Date().toISOString() };
+          syncService.syncProduct(updated);
+          addToast(
+            'info',
+            isPublished ? 'Product Published' : 'Product Unpublished',
+            isPublished ? `${p.name} is now visible on the storefront.` : `${p.name} removed from customer storefront.`
+          );
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
+  const deleteProduct = (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id));
+    syncService.deleteProduct(id);
+    addToast('info', 'Product Deleted', 'Product removed from database.');
+  };
+
+  const updateStock = (productId: string, newStock: number, variantId?: string) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === productId) {
+          let updated: Product;
+          if (variantId && p.variants) {
+            const updatedVariants = p.variants.map(v =>
+              v.id === variantId ? { ...v, stock: newStock } : v
+            );
+            const totalStock = updatedVariants.reduce((sum, v) => sum + v.stock, 0);
+            updated = { ...p, stockQuantity: totalStock, variants: updatedVariants, updatedAt: new Date().toISOString() };
+          } else {
+            const currentOpMap = { ...(p.opStock || {}), [p.assignedOpId]: newStock };
+            updated = { ...p, stockQuantity: newStock, opStock: currentOpMap, updatedAt: new Date().toISOString() };
+          }
+          syncService.syncProduct(updated);
+          return updated;
+        }
+        return p;
+      })
+    );
+    addToast('info', 'Stock Level Adjusted', `Stock level updated to ${newStock} units.`);
+  };
+
+  // ==========================================
+  // SLM REQUISITIONS & TRANSFERS
+  // ==========================================
   const createRequisition = (data: {
     opId: string;
     requesterName: string;
@@ -349,7 +783,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const p = products.find(prod => prod.id === it.productId);
       return {
         productId: it.productId,
-        productName: p ? p.name : 'Standard Product',
+        productName: p ? p.name : 'Standard Polymer Product',
         sku: p ? p.sku : 'IYN-SKU',
         requestedQty: it.requestedQty,
         availableWarehouseStock: p ? p.warehouseStock : 100,
@@ -374,8 +808,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setRequisitions(prev => [newReq, ...prev]);
+    syncService.syncRequisition(newReq);
 
-    // Mark any corresponding low stock alert as requisition_created
+    // Resolve / update low stock alerts
     data.items.forEach(it => {
       setLowStockAlerts(prev =>
         prev.map(a =>
@@ -389,7 +824,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(
       'success',
       'Goods Requisition Submitted',
-      `Requisition #${reqNum} submitted to Central Warehouse for ${requisitionItems.length} item line(s).`
+      `Requisition #${reqNum} sent to Central Warehouse for ${requisitionItems.length} product line(s).`
     );
 
     return newReq;
@@ -436,7 +871,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
 
         if (status === 'approved') {
-          updates.approvedBy = 'Chief Warehouse Officer Yakubu';
+          updates.approvedBy = currentUser?.fullName || 'Chief Warehouse Officer Yakubu';
           updates.approvedAt = now;
         } else if (status === 'dispatched_to_op') {
           updates.dispatchedAt = now;
@@ -450,7 +885,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updates.notes = req.notes ? `${req.notes}\n[Update]: ${payload.notes}` : payload.notes;
         }
 
-        return { ...req, ...updates };
+        const merged = { ...req, ...updates };
+        syncService.syncRequisition(merged);
+        return merged;
       })
     );
 
@@ -462,10 +899,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           prev.map(p => {
             if (p.id === it.productId) {
               const newWhStock = Math.max(0, p.warehouseStock - qtyToDeduct);
-              return {
-                ...p,
-                warehouseStock: newWhStock
-              };
+              const updated = { ...p, warehouseStock: newWhStock };
+              syncService.syncProduct(updated);
+              return updated;
             }
             return p;
           })
@@ -473,8 +909,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       addToast(
         'info',
-        'Dispatched to OP Floor',
-        `Requisition #${targetReq.requisitionNumber} has been dispatched from Central Warehouse to ${targetReq.opName}.`
+        'Dispatched from Warehouse',
+        `Requisition #${targetReq.requisitionNumber} dispatched to ${targetReq.opName}.`
       );
     }
 
@@ -491,17 +927,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 [targetReq.opId]: currentOpStock + qtyToAdd
               };
               const totalOpStock = Object.values(newOpStockMap).reduce((sum, v) => sum + v, 0);
-              return {
+              const updated = {
                 ...p,
                 opStock: newOpStockMap,
                 stockQuantity: totalOpStock
               };
+              syncService.syncProduct(updated);
+              return updated;
             }
             return p;
           })
         );
 
-        // Resolve active low stock alerts for this product
         setLowStockAlerts(prev =>
           prev.map(a =>
             a.productId === it.productId && a.opId === targetReq.opId
@@ -512,11 +949,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       try {
-        confetti({
-          particleCount: 60,
-          spread: 60,
-          origin: { y: 0.7 }
-        });
+        confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
       } catch {
         // ignore
       }
@@ -527,53 +960,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `${targetReq.opName} confirmed receipt. Local floor inventory updated successfully!`
       );
     }
-
-    if (status === 'approved') {
-      addToast('success', 'Requisition Approved', `Requisition #${targetReq.requisitionNumber} approved by Warehouse.`);
-    } else if (status === 'rejected') {
-      addToast('error', 'Requisition Rejected', `Requisition #${targetReq.requisitionNumber} was declined.`);
-    } else if (status === 'in_preparation') {
-      addToast('info', 'Stock In Preparation', `Warehouse team is picking items for ${targetReq.opName}.`);
-    }
-  };
-
-  const reassignCategoryToOp = (categoryId: string, newOpId: string) => {
-    setCategories(prev =>
-      prev.map(c => (c.id === categoryId ? { ...c, assignedOpId: newOpId } : c))
-    );
-
-    const category = categories.find(c => c.id === categoryId);
-    const targetOp = slmUnits.find(u => u.id === newOpId);
-
-    if (category) {
-      // Also update products in this category
-      setProducts(prev =>
-        prev.map(p => (p.category === category.name ? { ...p, assignedOpId: newOpId } : p))
-      );
-
-      // Update SLM unit category assignments
-      setSlmUnits(prev =>
-        prev.map(u => {
-          if (u.id === newOpId) {
-            return {
-              ...u,
-              assignedCategories: Array.from(new Set([...u.assignedCategories, category.name]))
-            };
-          } else {
-            return {
-              ...u,
-              assignedCategories: u.assignedCategories.filter(name => name !== category.name)
-            };
-          }
-        })
-      );
-    }
-
-    addToast(
-      'success',
-      'Category Reassigned',
-      `Category "${category?.name || categoryId}" is now managed by ${targetOp?.name || newOpId}.`
-    );
   };
 
   const updateOpDetails = (opId: string, updates: Partial<SLMUnit>) => {
@@ -596,13 +982,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...it,
               prepStatus: status,
               pickedAt: status !== 'pending_pick' ? new Date().toISOString() : undefined,
-              pickedBy: status !== 'pending_pick' ? 'SLM Logistics Staff' : undefined
+              pickedBy: status !== 'pending_pick' ? (currentUser?.fullName || 'SLM Logistics Staff') : undefined
             };
           }
           return it;
         });
 
-        // Check if all items in order are packed
         const allPacked = updatedItems.every(
           it => it.prepStatus === 'picked_and_packed' || it.prepStatus === 'ready_for_dispatch'
         );
@@ -612,19 +997,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           newOrderStatus = 'ready_for_dispatch';
         }
 
-        return {
+        const updatedOrder = {
           ...ord,
           items: updatedItems,
           orderStatus: newOrderStatus
         };
+        syncService.syncOrder(updatedOrder);
+        return updatedOrder;
       })
     );
 
-    addToast(
-      'info',
-      'Item Preparation Updated',
-      `Product marked as ${status.replace(/_/g, ' ').toUpperCase()}.`
-    );
+    addToast('info', 'Item Preparation Updated', `Product marked as ${status.replace(/_/g, ' ').toUpperCase()}.`);
   };
 
   const dismissLowStockAlert = (alertId: string) => {
@@ -660,12 +1043,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             [targetOpId]: currentOp + qty
           };
           const totalStock = Object.values(newOpMap).reduce((sum, v) => sum + v, 0);
-          return {
+          const updated = {
             ...p,
             warehouseStock: newWh,
             opStock: newOpMap,
             stockQuantity: totalStock
           };
+          syncService.syncProduct(updated);
+          return updated;
         }
         return p;
       })
@@ -681,7 +1066,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Cart operations
+  // ==========================================
+  // CART & CHECKOUT
+  // ==========================================
   const addToCart = (product: Product, variant?: ProductVariant, quantity = 1) => {
     setCart(prev => {
       const existingIndex = prev.findIndex(
@@ -700,7 +1087,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast(
       'success',
       'Added to Cart',
-      `${quantity}x ${product.name}${variant ? ` (${variant.name})` : ''} added to your shopping cart.`
+      `${quantity}x ${product.name}${variant ? ` (${variant.name})` : ''} added to your cart.`
     );
   };
 
@@ -747,49 +1134,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Product Operations
-  const addProduct = (newProdData: Omit<Product, 'id' | 'rating' | 'reviewCount'>) => {
-    const id = `prod-${Date.now()}`;
-    const op = getOpForProduct(newProdData as Product);
-    const newProduct: Product = {
-      ...newProdData,
-      id,
-      rating: 5.0,
-      reviewCount: 0,
-      warehouseStock: newProdData.warehouseStock || 100,
-      opStock: newProdData.opStock || { [op.opId]: newProdData.stockQuantity || 30 },
-      assignedOpId: newProdData.assignedOpId || op.opId,
-      minAlertThreshold: newProdData.minAlertThreshold || 20
-    };
-    setProducts(prev => [newProduct, ...prev]);
-    addToast('success', 'Product Created', `${newProduct.name} is now live in the catalog.`);
-  };
-
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
-    addToast('success', 'Catalog Updated', 'Product details saved successfully.');
-  };
-
-  const updateStock = (productId: string, newStock: number, variantId?: string) => {
-    setProducts(prev =>
-      prev.map(p => {
-        if (p.id === productId) {
-          if (variantId && p.variants) {
-            const updatedVariants = p.variants.map(v =>
-              v.id === variantId ? { ...v, stock: newStock } : v
-            );
-            const totalStock = updatedVariants.reduce((sum, v) => sum + v.stock, 0);
-            return { ...p, stockQuantity: totalStock, variants: updatedVariants };
-          }
-          return { ...p, stockQuantity: newStock };
-        }
-        return p;
-      })
-    );
-    addToast('info', 'Stock Adjusted', `Stock level updated to ${newStock} units.`);
-  };
-
-  // Checkout & Order Placement (Connected to SLM/OP Pipeline)
+  // ==========================================
+  // ORDER PLACEMENT (ROUTING TO HUB & SLM)
+  // ==========================================
   const placeOrder = async (orderData: {
     fullName: string;
     email: string;
@@ -803,7 +1150,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const orderNumber = `IYN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const subtotal = cartTotal;
 
-    // Calculate delivery fee based on state
+    // Delivery fee calculation
     let deliveryFee = 3500;
     if (orderData.state.includes('Lagos')) deliveryFee = 3500;
     else if (['Ogun', 'Oyo', 'Osun'].includes(orderData.state)) deliveryFee = 6000;
@@ -813,9 +1160,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const totalAmount = subtotal + deliveryFee;
 
-    // Build order items with OP assignments and pending prep status
+    // Build order items with full Hub, OP, and Warehouse routing information
     const orderItems: OrderItemPrep[] = cart.map(item => {
-      const op = getOpForProduct(item.product);
+      const routing = getHubAndOpForProduct(item.product);
       return {
         productId: item.product.id,
         productName: item.product.name,
@@ -823,8 +1170,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         price: item.selectedVariant?.price ?? item.product.discountPrice ?? item.product.basePrice,
         quantity: item.quantity,
         image: item.product.images[0] || '',
-        assignedOpId: op.opId,
-        assignedOpName: op.opName,
+        hubId: routing.hubId,
+        hubName: routing.hubName,
+        assignedOpId: routing.opId,
+        assignedOpName: routing.opName,
+        warehouseLocation: routing.warehouseLocation,
         prepStatus: 'pending_pick'
       };
     });
@@ -861,50 +1211,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Deduct stock from OP and check for low stock triggers
     cart.forEach(item => {
-      const op = getOpForProduct(item.product);
-      const currentOpStock = item.product.opStock ? item.product.opStock[op.opId] || 0 : 0;
+      const routing = getHubAndOpForProduct(item.product);
+      const currentOpStock = item.product.opStock ? item.product.opStock[routing.opId] || 0 : 0;
       const remainingOpStock = Math.max(0, currentOpStock - item.quantity);
       const threshold = item.product.minAlertThreshold || 20;
 
-      // Update product inventory
       setProducts(prev =>
         prev.map(p => {
           if (p.id === item.product.id) {
             const updatedOpMap = {
               ...(p.opStock || {}),
-              [op.opId]: remainingOpStock
+              [routing.opId]: remainingOpStock
             };
             const newTotal = Object.values(updatedOpMap).reduce((sum, v) => sum + v, 0);
-            return {
+            const updatedProduct = {
               ...p,
               opStock: updatedOpMap,
               stockQuantity: newTotal
             };
+            syncService.syncProduct(updatedProduct);
+            return updatedProduct;
           }
           return p;
         })
       );
 
-      // Trigger low-stock alert if floor stock dropped below safe threshold
       if (remainingOpStock <= threshold) {
         const newAlert: LowStockAlert = {
           id: `lsa-${Date.now()}-${item.product.id}`,
           productId: item.product.id,
           productName: item.product.name,
-          opId: op.opId,
-          opName: op.opName,
+          opId: routing.opId,
+          opName: routing.opName,
           currentStock: remainingOpStock,
           warehouseStock: item.product.warehouseStock,
           threshold,
           createdAt: new Date().toISOString(),
           status: 'active'
         };
-
         setLowStockAlerts(prev => [newAlert, ...prev]);
       }
     });
 
-    // Automatically add or update CRM lead
+    // Update CRM Records
     setLeads(prev => {
       const existing = prev.find(l => l.email.toLowerCase() === orderData.email.toLowerCase());
       if (existing) {
@@ -929,7 +1278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           status: 'converted',
           estimatedValue: totalAmount,
           assignedStaff: 'Kester Igwe (Sales)',
-          notes: `Placed order ${orderNumber} for ${cart.length} product lines.`,
+          notes: `Placed order ${orderNumber} for ${cart.length} item line(s).`,
           lifetimeSpend: totalAmount,
           orderCount: 1,
           lastContactDate: new Date().toISOString(),
@@ -948,22 +1297,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     setOrders(prev => [newOrder, ...prev]);
+    syncService.syncOrder(newOrder);
     clearCart();
 
     try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
     } catch {
       // ignore
     }
 
     addToast(
       'success',
-      'Order Confirmed & Sent to SLM',
-      `Order ${orderNumber} placed. Picking tickets dispatched to responsible OP floor units.`
+      'Order Confirmed & Sent to Hub Dispatch',
+      `Order ${orderNumber} placed. Picking tickets dispatched to responsible Hub & OP floor units.`
     );
     setSelectedTrackingOrder(newOrder);
     return newOrder;
@@ -978,12 +1324,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOrders(prev =>
       prev.map(ord => {
         if (ord.id === orderId) {
-          return {
+          const updated = {
             ...ord,
             orderStatus: status,
             trackingNumber: trackingNumber || ord.trackingNumber,
             carrierName: carrierName || ord.carrierName
           };
+          syncService.syncOrder(updated);
+          return updated;
         }
         return ord;
       })
@@ -991,7 +1339,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('info', 'Order Status Updated', `Order marked as ${status.toUpperCase()}.`);
   };
 
-  // CRM operations
+  // ==========================================
+  // CRM OPERATIONS
+  // ==========================================
   const addLead = (
     leadData: Omit<CRMLead, 'id' | 'interactions' | 'lifetimeSpend' | 'orderCount' | 'lastContactDate'>
   ) => {
@@ -1006,7 +1356,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: `int-${Date.now()}`,
           timestamp: new Date().toISOString(),
           type: 'call',
-          notes: 'Lead created in CRM pipeline.',
+          notes: 'Lead registered in CRM pipeline.',
           agentName: leadData.assignedStaff
         }
       ]
@@ -1032,7 +1382,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date().toISOString(),
       type,
       notes,
-      agentName: 'Staff Admin'
+      agentName: currentUser?.fullName || 'Staff Admin'
     };
     setLeads(prev =>
       prev.map(l => {
@@ -1049,7 +1399,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addToast('success', 'Activity Logged', `${type.toUpperCase()} interaction recorded.`);
   };
 
-  // SLA Tickets
+  // ==========================================
+  // SLA SUPPORT TICKETS
+  // ==========================================
   const createTicket = (data: {
     subject: string;
     category: SupportTicket['category'];
@@ -1140,7 +1492,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 id: `log-${Date.now()}`,
                 timestamp: new Date().toISOString(),
                 event: `Ticket status moved to [${status.toUpperCase()}]`,
-                performedBy: 'Support Staff'
+                performedBy: currentUser?.fullName || 'Support Staff'
               }
             ]
           };
@@ -1165,7 +1517,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 id: `log-${Date.now()}`,
                 timestamp: new Date().toISOString(),
                 event: `Assigned to ${staffName}`,
-                performedBy: 'Supervisor'
+                performedBy: currentUser?.fullName || 'Supervisor'
               }
             ]
           };
@@ -1231,7 +1583,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 id: `log-esc-${Date.now()}`,
                 timestamp: new Date().toISOString(),
                 event: `ESCALATED TO URGENT: ${reason}`,
-                performedBy: 'Supervisor Alert'
+                performedBy: currentUser?.fullName || 'Supervisor Alert'
               }
             ]
           };
@@ -1247,18 +1599,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activeView,
         setActiveView,
+        currentUser,
+        isAuthenticated: Boolean(currentUser),
         userRole,
         setUserRole,
+        login,
+        logout,
+        resetPassword,
+        isLoginModalOpen,
+        setIsLoginModalOpen,
+        switchRole,
+        hubs,
+        selectedHubFilter,
+        setSelectedHubFilter,
+        addHub,
+        updateHub,
+        toggleHubStatus,
+        deleteHub,
         categories,
+        selectedCategory,
+        setSelectedCategory,
+        addCategory,
+        updateCategory,
+        deleteCategory,
+        reassignCategoryToHub,
+        reassignCategoryToOp,
         products,
+        publishedProducts,
         selectedProduct,
         setSelectedProduct,
         searchQuery,
         setSearchQuery,
-        selectedCategory,
-        setSelectedCategory,
         addProduct,
         updateProduct,
+        toggleProductPublished,
+        deleteProduct,
         updateStock,
         slmUnits,
         requisitions,
@@ -1267,7 +1642,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedOpFilter,
         createRequisition,
         updateRequisitionStatus,
-        reassignCategoryToOp,
         updateOpDetails,
         updateItemPrepStatus,
         dismissLowStockAlert,

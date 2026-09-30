@@ -10,7 +10,9 @@ import {
   LayoutDashboard,
   Layers,
   PhoneCall,
-  ChevronDown
+  ChevronDown,
+  Lock,
+  Building2
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -19,12 +21,16 @@ export const Header: React.FC = () => {
     setActiveView,
     userRole,
     setUserRole,
+    currentUser,
+    isAuthenticated,
+    setIsLoginModalOpen,
+    switchRole,
     cartItemCount,
     wishlist,
     setIsCartOpen,
     searchQuery,
     setSearchQuery,
-    products,
+    publishedProducts,
     setSelectedProduct,
     tickets
   } = useApp();
@@ -37,9 +43,10 @@ export const Header: React.FC = () => {
 
   // Filter products for quick search dropdown
   const searchResults = searchQuery.trim()
-    ? products.filter(p =>
+    ? publishedProducts.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
+        p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.hubName && p.hubName.toLowerCase().includes(searchQuery.toLowerCase()))
       ).slice(0, 5)
     : [];
 
@@ -60,7 +67,7 @@ export const Header: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Truck size={14} color="#f59e0b" />
-            <strong>Fast Delivery Across Nigeria</strong> (Lagos, Abuja, Port Harcourt & Nationwide)
+            <strong>Fast Delivery Across Nigeria</strong> (Hub 1 Lagos, Hub 3 Abuja & Nationwide)
           </span>
           <span style={{ display: 'none', md: 'inline' } as React.CSSProperties}>|</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.9 }}>
@@ -71,7 +78,7 @@ export const Header: React.FC = () => {
 
         {/* Quick Role & Perspective Switcher */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Mode:</span>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Active Mode:</span>
           <button
             onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
             style={{
@@ -90,6 +97,7 @@ export const Header: React.FC = () => {
           >
             {userRole === 'customer' && '🛒 Customer Storefront'}
             {userRole === 'warehouse' && '🏭 Central Warehouse'}
+            {userRole === 'slm' && '📦 SLM Director'}
             {userRole === 'op1_manager' && '📦 OP 1 - Heavy Storage'}
             {userRole === 'op2_manager' && '🗑️ OP 2 - Sanitation Bins'}
             {userRole === 'op3_manager' && '🪑 OP 3 - Furniture'}
@@ -117,7 +125,7 @@ export const Header: React.FC = () => {
             >
               <button
                 onClick={() => {
-                  setUserRole('customer');
+                  switchRole('customer');
                   setActiveView('store');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -144,7 +152,29 @@ export const Header: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setUserRole('warehouse');
+                  switchRole('slm');
+                  setActiveView('admin-hubs');
+                  setIsRoleDropdownOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  background: userRole === 'slm' ? '#0f766e' : 'transparent',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  display: 'block'
+                }}
+              >
+                📦 SLM Director (Hubs & Categories)
+              </button>
+
+              <button
+                onClick={() => {
+                  switchRole('warehouse');
                   setActiveView('admin-slm');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -166,7 +196,7 @@ export const Header: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setUserRole('op1_manager');
+                  switchRole('op1_manager');
                   setActiveView('admin-slm');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -188,7 +218,7 @@ export const Header: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setUserRole('op2_manager');
+                  switchRole('op2_manager');
                   setActiveView('admin-slm');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -210,7 +240,7 @@ export const Header: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setUserRole('op3_manager');
+                  switchRole('op3_manager');
                   setActiveView('admin-slm');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -232,7 +262,7 @@ export const Header: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setUserRole('op4_manager');
+                  switchRole('op4_manager');
                   setActiveView('admin-slm');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -256,7 +286,7 @@ export const Header: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setUserRole('admin');
+                  switchRole('superadmin');
                   setActiveView('admin-dashboard');
                   setIsRoleDropdownOpen(false);
                 }}
@@ -374,7 +404,7 @@ export const Header: React.FC = () => {
                 }}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
-                placeholder="Search drums, waste bins, chairs, solar lamps, pallets..."
+                placeholder="Search balloons, buckets, bowls, PET bottles, drums, bins..."
                 style={{
                   width: '100%',
                   background: 'transparent',
@@ -450,6 +480,11 @@ export const Header: React.FC = () => {
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#0f766e', fontWeight: 700 }}>
                         ₦{(p.discountPrice || p.basePrice).toLocaleString()}
+                        {p.hubName && (
+                          <span style={{ marginLeft: '8px', color: '#64748b', fontWeight: 500, fontSize: '0.7rem' }}>
+                            • {p.hubName.split('-')[0]}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -521,14 +556,17 @@ export const Header: React.FC = () => {
               }}
             >
               <User size={16} />
-              My Portal / SLA
+              Customer Desk
             </button>
 
-            {/* Admin Hub Shortcut */}
+            {/* Admin Hub Shortcut (Triggers login modal if unauthenticated) */}
             <button
               onClick={() => {
-                setUserRole('admin');
-                setActiveView('admin-dashboard');
+                if (!isAuthenticated && userRole === 'customer') {
+                  setIsLoginModalOpen(true);
+                } else {
+                  setActiveView('admin-dashboard');
+                }
               }}
               style={{
                 background: activeView.startsWith('admin') ? '#0f766e' : '#0f172a',
@@ -546,7 +584,7 @@ export const Header: React.FC = () => {
               }}
             >
               <LayoutDashboard size={15} />
-              Admin Hub
+              {isAuthenticated ? 'Admin Hub' : 'Admin Login'}
               {breachedTicketsCount > 0 && (
                 <span className="sla-pulse-urgent" style={{
                   position: 'absolute',
