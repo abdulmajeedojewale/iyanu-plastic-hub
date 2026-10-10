@@ -9,6 +9,8 @@ import { StorefrontView } from './components/StorefrontView';
 import { CatalogView } from './components/CatalogView';
 import { OrderTrackingView } from './components/OrderTrackingView';
 import { CustomerPortalView } from './components/CustomerPortalView';
+import { AboutUsView } from './components/AboutUsView';
+import { ContactView } from './components/ContactView';
 import { AdminLayout } from './components/admin/AdminLayout';
 import { BusinessDashboard } from './components/admin/BusinessDashboard';
 import { ProductManager } from './components/admin/ProductManager';
@@ -41,6 +43,8 @@ const MainContent: React.FC = () => {
       <div style={{ flex: 1 }}>
         {activeView === 'store' && <StorefrontView />}
         {activeView === 'catalog' && <CatalogView />}
+        {activeView === 'about-us' && <AboutUsView />}
+        {activeView === 'contact-us' && <ContactView />}
         {activeView === 'order-tracking' && <OrderTrackingView />}
         {activeView === 'customer-portal' && <CustomerPortalView />}
 
@@ -105,25 +109,25 @@ const MainContent: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
                 <img
                   src="/logo.png"
-                  alt="IPS Logo"
+                  alt="WATERLORD Logo"
                   style={{
                     width: '44px',
                     height: '44px',
                     borderRadius: '50%',
                     objectFit: 'cover',
-                    border: '2px solid #eab308',
-                    boxShadow: '0 4px 10px rgba(234, 179, 8, 0.4)'
+                    border: '2px solid #2dd4bf',
+                    boxShadow: '0 4px 10px rgba(45, 212, 191, 0.4)'
                   }}
                 />
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0 }}>
-                  IYANU <span style={{ color: '#2dd4bf' }}>PLASTIC</span> HUB
+                  WATERLORD <span style={{ color: '#2dd4bf' }}>PLASTIC</span> STORES
                 </h3>
               </div>
               <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                Nigeria's verified commercial distributor of virgin-grade polymer storage drums, mobile waste bins, heavy furniture, and general household utilities.
+                Waterlord (Iyanu Plastic Stores Nig. Ents.) — Leading retail &amp; wholesale establishment for durable household products, calibrated buckets, plastic furniture, waste bins, and industrial drums.
               </p>
               <div style={{ fontSize: '0.8rem', color: '#2dd4bf', fontWeight: 600 }}>
-                RC No: 1849202 • CAC Certified Manufacturer
+                Est. 2008 • Reg. 2012 • Registered Enterprise
               </div>
             </div>
 
@@ -134,41 +138,46 @@ const MainContent: React.FC = () => {
               </h4>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
                 <li>
+                  <a onClick={() => setActiveView('store')} style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'none' }}>
+                    Home
+                  </a>
+                </li>
+                <li>
                   <a onClick={() => setActiveView('catalog')} style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'none' }}>
-                    Shop Heavy Drums & Bins
+                    Shop Catalog
+                  </a>
+                </li>
+                <li>
+                  <a onClick={() => setActiveView('about-us')} style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'none' }}>
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a onClick={() => setActiveView('contact-us')} style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'none' }}>
+                    Contact Us
                   </a>
                 </li>
                 <li>
                   <a onClick={() => setActiveView('order-tracking')} style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'none' }}>
-                    Live Fleet Order Tracking
-                  </a>
-                </li>
-                <li>
-                  <a onClick={() => setActiveView('customer-portal')} style={{ color: '#94a3b8', cursor: 'pointer', textDecoration: 'none' }}>
-                    Customer Portal & SLA Desk
-                  </a>
-                </li>
-                <li>
-                  <a onClick={() => setIsLoginModalOpen(true)} style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'none', fontWeight: 700 }}>
-                    👑 Staff & Admin Portal Login
+                    Order Tracking
                   </a>
                 </li>
               </ul>
             </div>
 
-            {/* Col 3: Nigerian Logistics & Hubs */}
+            {/* Col 3: Physical Address */}
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '16px', color: '#f8fafc' }}>
-                Warehouse Hubs & Fulfillment
+                Headquarters & Depot
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem', color: '#94a3b8' }}>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <MapPin size={16} color="#2dd4bf" style={{ flexShrink: 0, marginTop: '3px' }} />
-                  <span><strong>Hub 1 (Lagos):</strong> Plot 12 Commercial Avenue, Ikeja Industrial Estate</span>
+                  <span>Tarred Road Between Gbodofon(Aregbe) Bridge and Aiyegbaju Market, Osogbo, Osun State</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <MapPin size={16} color="#2dd4bf" style={{ flexShrink: 0, marginTop: '3px' }} />
-                  <span><strong>Hub 3 (Abuja Depot):</strong> Idu Industrial Layout, Phase 2, Abuja FCT</span>
+                  <Truck size={16} color="#2dd4bf" style={{ flexShrink: 0, marginTop: '3px' }} />
+                  <span>Statewide & Regional Wholesale Delivery Available</span>
                 </div>
               </div>
             </div>
@@ -176,20 +185,25 @@ const MainContent: React.FC = () => {
             {/* Col 4: Contact & Hotlines */}
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '16px', color: '#f8fafc' }}>
-                Wholesale Desk & Support
+                Get In Touch
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem', color: '#94a3b8' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <PhoneCall size={15} color="#f59e0b" />
-                  <span>+234 803 456 7890 (Direct Hotline)</span>
+                  <a href="tel:08104052186" style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 600 }}>
+                    08104052186
+                  </a>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Mail size={15} color="#f59e0b" />
-                  <span>orders@iyanuplastic.ng</span>
+                  <a href="mailto:admin@iyanuplasticstores.com" style={{ color: '#38bdf8', textDecoration: 'none' }}>
+                    admin@iyanuplasticstores.com
+                  </a>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Truck size={15} color="#2dd4bf" />
-                  <span>Interstate Haulage Dispatch Active</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <a onClick={() => setIsLoginModalOpen(true)} style={{ color: '#2dd4bf', cursor: 'pointer', textDecoration: 'none', fontWeight: 700 }}>
+                    👑 Staff & Admin Portal Login
+                  </a>
                 </div>
               </div>
             </div>
@@ -207,7 +221,7 @@ const MainContent: React.FC = () => {
             gap: '12px'
           }}>
             <div>
-              © {new Date().getFullYear()} IYANU PLASTIC & GENERAL MERCHANDISE LTD. All rights reserved.
+              Copyright © {new Date().getFullYear()} Iyanu Plastic Stores Nig. Ents. All rights reserved.
             </div>
             <div>
               Powered by Supabase Auth & PostgreSQL Realtime Single Source of Truth
