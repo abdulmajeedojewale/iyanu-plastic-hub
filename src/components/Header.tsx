@@ -334,20 +334,20 @@ export const Header: React.FC = () => {
           >
             <img
               src="/logo.png"
-              alt="IYANU PLASTIC STORE (IPS) Logo"
+              alt="WATERLORD Brand Logo"
               style={{
                 width: '48px',
                 height: '48px',
                 borderRadius: '50%',
                 objectFit: 'cover',
-                boxShadow: '0 4px 12px rgba(234, 179, 8, 0.35)',
-                border: '2px solid #eab308'
+                boxShadow: '0 4px 12px rgba(15, 118, 110, 0.35)',
+                border: '2px solid #0f766e'
               }}
             />
             <div>
               <div style={{
                 fontFamily: 'var(--font-heading)',
-                fontSize: '1.25rem',
+                fontSize: '1.3rem',
                 fontWeight: 900,
                 letterSpacing: '-0.03em',
                 lineHeight: 1.1,
@@ -356,16 +356,16 @@ export const Header: React.FC = () => {
                 alignItems: 'center',
                 gap: '6px'
               }}>
-                IYANU <span style={{ color: '#0f766e' }}>PLASTIC</span>
+                WATERLORD <span style={{ color: '#0f766e' }}>STORE</span>
                 <span style={{
-                  background: '#fef3c7',
-                  color: '#b45309',
+                  background: '#ccfbf1',
+                  color: '#0f766e',
                   fontSize: '0.65rem',
                   padding: '1px 6px',
                   borderRadius: '4px',
                   fontWeight: 800
                 }}>
-                  HUB
+                  PLASTIC HUB
                 </span>
               </div>
               <div style={{
@@ -375,7 +375,7 @@ export const Header: React.FC = () => {
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase'
               }}>
-                & General Merchandise Nigeria
+                Polymer &amp; Household Supplies
               </div>
             </div>
           </div>
@@ -404,7 +404,7 @@ export const Header: React.FC = () => {
                 }}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
-                placeholder="Search balloons, buckets, bowls, PET bottles, drums, bins..."
+                placeholder="Search calibrated buckets, bowls, PET bottles, bins, furniture..."
                 style={{
                   width: '100%',
                   background: 'transparent',
@@ -521,6 +521,34 @@ export const Header: React.FC = () => {
               }}
             >
               Shop Catalog
+            </button>
+
+            <button
+              onClick={() => setActiveView('about-us')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: activeView === 'about-us' ? '#0f766e' : '#475569',
+                fontWeight: activeView === 'about-us' ? 700 : 500,
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              About Us
+            </button>
+
+            <button
+              onClick={() => setActiveView('contact-us')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: activeView === 'contact-us' ? '#0f766e' : '#475569',
+                fontWeight: activeView === 'contact-us' ? 700 : 500,
+                fontSize: '0.875rem',
+                cursor: 'pointer'
+              }}
+            >
+              Contact Us
             </button>
 
             <button
