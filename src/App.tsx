@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
+import { useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { ToastContainer } from './components/ToastContainer';
 import { ProductDetailModal } from './components/ProductDetailModal';
