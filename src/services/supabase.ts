@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+﻿import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Product, Category, Hub, Order, CRMLead, SupportTicket, GoodsRequisition, Role, AuthUser } from '../types';
 
 // Fallback configuration if environment variables are not yet populated in .env
@@ -25,7 +25,7 @@ export const DEMO_ADMIN_USERS: AuthUser[] = [
   {
     id: 'usr-superadmin',
     email: 'superadmin@iyanuplastic.ng',
-    fullName: 'Alhaji Iyanuoluwa Adeleke',
+    fullName: 'Iyanu Plastic Admin Hub Superadmin',
     role: 'superadmin',
     phone: '+234 803 456 7890',
     createdAt: '2026-01-01T08:00:00.000Z'
@@ -432,3 +432,4 @@ export const syncService = {
     }
   }
 };
+

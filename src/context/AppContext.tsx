@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Product,
@@ -286,7 +286,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Auth & Session State
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
     const saved = localStorage.getItem('iyanu_auth_user');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.fullName === 'Alhaji Iyanuoluwa Adeleke') {
+          parsed.fullName = 'Iyanu Plastic Admin Hub Superadmin';
+          localStorage.setItem('iyanu_auth_user', JSON.stringify(parsed));
+        }
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   });
 
   const [userRole, setUserRole] = useState<Role>(() => {
@@ -479,7 +491,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const switchRole = (role: Role) => {
     setUserRole(role);
     if (currentUser) {
-      setCurrentUser({ ...currentUser, role });
+      const demo = DEMO_ADMIN_USERS.find(d => d.role === role);
+      setCurrentUser({
+        ...currentUser,
+        role,
+        fullName: demo?.fullName || currentUser.fullName
+      });
     } else {
       // Find matching demo user for seamless admin preview
       const demo = DEMO_ADMIN_USERS.find(d => d.role === role);
@@ -1776,3 +1793,4 @@ export const useApp = () => {
   }
   return context;
 };
+

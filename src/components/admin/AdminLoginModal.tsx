@@ -329,7 +329,7 @@ export const AdminLoginModal: React.FC = () => {
                     {usr.role.replace('_', ' ')}
                   </div>
                   <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {usr.fullName.split(' ')[0]}
+                    {usr.role === 'superadmin' ? 'Admin Hub' : usr.fullName.split(' ')[0]}
                   </div>
                 </button>
               ))}
