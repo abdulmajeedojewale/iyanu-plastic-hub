@@ -49,7 +49,7 @@ export const AboutUsView: React.FC = () => {
             <Building2 size={16} /> Established 2008 • Officially Registered 2012
           </div>
           <h1 style={{ fontSize: '2.75rem', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            About Waterlord (Iyanu Plastic Stores)
+            About Iyanu Plastic Stores
           </h1>
           <p style={{ fontSize: '1.2rem', color: '#94a3b8', maxWidth: '750px', margin: '0 auto 28px', lineHeight: 1.6 }}>
             A leading retail & wholesale establishment dedicated to enhancing homes and lifestyles with durable, affordable, and innovative plastic & household solutions across Nigeria.

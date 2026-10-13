@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS products (
     min_alert_threshold INT DEFAULT 20,
     availability TEXT DEFAULT 'in_stock' CHECK (availability IN ('in_stock', 'low_stock', 'out_of_stock', 'discontinued')),
     is_published BOOLEAN DEFAULT true,
+    is_archived BOOLEAN DEFAULT false,
     is_featured BOOLEAN DEFAULT false,
     is_bestseller BOOLEAN DEFAULT false,
     is_new_arrival BOOLEAN DEFAULT false,
@@ -212,6 +213,34 @@ CREATE POLICY "Public can insert support tickets" ON support_tickets FOR INSERT 
 CREATE POLICY "Public can track their order" ON orders FOR SELECT USING (true);
 
 -- ==============================================================================
+-- STORAGE BUCKET CONFIGURATION (PRODUCT MEDIA)
+-- ==============================================================================
+-- 1. Insert product-images public bucket if not present
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('product-images', 'product-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Storage RLS: Public can view product images
+CREATE POLICY "Public can view product images" ON storage.objects
+    FOR SELECT TO public
+    USING (bucket_id = 'product-images');
+
+-- 3. Storage RLS: Authenticated staff/admin can upload product images
+CREATE POLICY "Authenticated users can upload product images" ON storage.objects
+    FOR INSERT TO authenticated
+    WITH CHECK (bucket_id = 'product-images');
+
+-- 4. Storage RLS: Authenticated staff/admin can update product images
+CREATE POLICY "Authenticated users can update product images" ON storage.objects
+    FOR UPDATE TO authenticated
+    USING (bucket_id = 'product-images');
+
+-- 5. Storage RLS: Authenticated staff/admin can delete product images
+CREATE POLICY "Authenticated users can delete product images" ON storage.objects
+    FOR DELETE TO authenticated
+    USING (bucket_id = 'product-images');
+
+-- ==============================================================================
 -- INITIAL SEED DATA: HUBS 1 TO 7 + CATEGORIES & PRODUCTS
 -- ==============================================================================
 
@@ -226,19 +255,18 @@ INSERT INTO hubs (id, name, code, slm_id, location, manager_name, contact_phone,
 ('hub-7', 'Hub 7 - Retail Merchandise & Packaging Sacks', 'HUB-7', 'slm-north', 'Kano Commercial Center, Bompai Industrial Area, Kano', 'Musa Garba', '+234 803 776 5432', 'active', 'High-density poly sacks, transparent merchandise packaging, and retail display racks.', 'op-4')
 ON CONFLICT (id) DO NOTHING;
 
--- Seed Hub 1 Categories (Balloons, Animated Buckets, Ordinary Buckets, Bowls, PET Bottles, PET Packaging, Other Assigned Categories)
+-- Seed Hub 1 Categories
 INSERT INTO categories (id, hub_id, name, slug, icon_name, description, item_count, image, assigned_op_id, status) VALUES
-('cat-h1-1', 'hub-1', 'Balloons', 'balloons', 'Sparkles', 'Festive, party, decorative, and commercial advertising polymer balloons in multiple sizes.', 12, 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=600&q=80', 'op-4', 'active'),
-('cat-h1-2', 'hub-1', 'Animated Buckets', 'animated-buckets', 'Smile', 'Character-printed and decorative children water buckets with anti-crack flex polymer handles.', 18, 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=600&q=80', 'op-4', 'active'),
-('cat-h1-3', 'hub-1', 'Ordinary Buckets', 'ordinary-buckets', 'Boxes', 'Everyday heavy-duty laundry, cleaning, and multipurpose household water buckets with graduation marks.', 24, 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80', 'op-1', 'active'),
-('cat-h1-4', 'hub-1', 'Bowls', 'bowls', 'Circle', 'Extra-deep polymer washing, mixing, catering, and soaking basins with non-slip base grip.', 20, 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=600&q=80', 'op-1', 'active'),
-('cat-h1-5', 'hub-1', 'PET Bottles', 'pet-bottles', 'Package', 'Crystal-clear food grade PET preforms, juice bottles, beverage packaging, and dispenser containers.', 32, 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80', 'op-1', 'active'),
-('cat-h1-6', 'hub-1', 'PET Packaging', 'pet-packaging', 'ShoppingBag', 'Industrial clamshells, thermoformed trays, tamper-proof jars, and retail packaging containers.', 28, 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=600&q=80', 'op-1', 'active'),
-('cat-h1-7', 'hub-1', 'Heavy Storage Drums & Tanks', 'heavy-storage-drums', 'Layers', 'Industrial 50L to 250L water and chemical storage drums with brass tap fittings and sealed lids.', 15, 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?auto=format&fit=crop&w=600&q=80', 'op-1', 'active'),
+('cat-h1-2', 'hub-1', 'Calibrated Buckets', 'calibrated-buckets', 'Boxes', 'Heavy-duty calibrated household, laundry, and industrial-grade buckets with precision litre graduation marks.', 44, 'https://www.iyanuplasticstores.com/web/image/product.template/12333/image_512/%5BP124%5D%20P124%20-%2015L%20Bucket%20HF?unique=3fc1fe9', 'op-1', 'active'),
+('cat-h1-3', 'hub-1', 'Ordinary Buckets', 'ordinary-buckets', 'Boxes', 'Everyday heavy-duty laundry, cleaning, and multipurpose household water buckets with graduation marks.', 38, 'https://www.iyanuplasticstores.com/web/image/product.template/12327/image_512/%5BP117%5D%20P117%20-%20Spiral%20Bucket%2015L%20VIK?unique=dea483c', 'op-1', 'active'),
+('cat-h1-4', 'hub-1', 'Bowls', 'bowls', 'Circle', 'Extra-deep polymer washing, mixing, catering, and soaking basins with non-slip base grip.', 195, 'https://www.iyanuplasticstores.com/web/image/product.template/24734/image_512/%5BCC46%5D%20CC46%20-%20Dome%20Basin%2020cm?unique=3553933', 'op-1', 'active'),
+('cat-h1-5', 'hub-1', 'PET Bottles', 'pet-bottles', 'Package', 'Crystal-clear food grade PET preforms, juice bottles, beverage packaging, and dispenser containers.', 32, 'https://www.iyanuplasticstores.com/web/image/product.template/24549/image_512/%5BA12%5D%20A12%20-%20Jojo%20500ml%20%2828mm-L%29%20x120%20%C2%B2%E2%81%B0?unique=b30f566', 'op-1', 'active'),
+('cat-h1-6', 'hub-1', 'Packaging Products', 'packaging', 'ShoppingBag', 'Industrial clamshells, thermoformed trays, tamper-proof jars, and retail packaging containers.', 30, 'https://www.iyanuplasticstores.com/web/image/product.template/24678/image_512/%5BB48%5D%20B48%20-%20Pioneer%20400ml?unique=ba01484', 'op-1', 'active'),
+('cat-h1-7', 'hub-1', 'Plastic Products & Storage Drums', 'plastic-products', 'Layers', 'Industrial 20L to 120L water and chemical storage drums with brass tap fittings and sealed lids.', 1153, 'https://www.iyanuplasticstores.com/web/image/product.template/5109/image_512/%5BA123%5D%20A123%20-%20Keg%2050L%20SAC%2A%2A%2A?unique=f0c55a8', 'op-1', 'active'),
 -- Hub 2 Categories
-('cat-h2-1', 'hub-2', 'Waste Management & Sanitation', 'waste-management', 'Trash2', '120L & 240L mobile waste wheelie bins, recycling bins, pedal hospital bins, and heavy sanitation carts.', 25, 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=80', 'op-2', 'active'),
+('cat-h2-1', 'hub-2', 'Waste Management & Sanitation', 'waste-management', 'Trash2', '120L & 240L mobile waste wheelie bins, vintage dustbins, recycling bins, and hospital clinical bins.', 44, 'https://www.iyanuplasticstores.com/web/image/product.template/24032/image_512/%5BN105%5D%20N105%20-%20Vintage%20Dustbin%20%28B%29?unique=849c816', 'op-2', 'active'),
 -- Hub 3 Categories
-('cat-h3-1', 'hub-3', 'Durable Plastic Furniture', 'furniture', 'Armchair', 'Commercial stackable monobloc chairs, banquet tables, school desks, and outdoor armchairs.', 19, 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=600&q=80', 'op-3', 'active'),
+('cat-h3-1', 'hub-3', 'Durable Plastic Furniture', 'furniture', 'Armchair', 'Commercial stackable monobloc chairs, banquet tables, school desks, and outdoor armchairs.', 57, 'https://www.iyanuplasticstores.com/web/image/product.template/24699/image_512/%5BC1%5D%20C1%20-%20Strong%20S%20Chair%2A%2A%2A?unique=f9246cb', 'op-3', 'active'),
 -- Hub 4 Categories
-('cat-h4-1', 'hub-4', 'Electrical & Household Items', 'electrical-household', 'Zap', 'Surge extension boxes, rechargeable solar lamps, kitchen organizers, and electrical fittings.', 28, 'https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=600&q=80', 'op-4', 'active')
+('cat-h4-1', 'hub-4', 'Electrical & Household Items', 'electrical-household', 'Zap', 'Surge extension boxes, rechargeable solar lamps, kitchen organizers, and electrical fittings.', 385, 'https://www.iyanuplasticstores.com/web/image/product.template/18540/image_512/%5BYY123%5D%20YY123%20-%20Wine%20Glass%20x6%20%5BES1002%5D?unique=8a1f5e8', 'op-4', 'active')
 ON CONFLICT (id) DO NOTHING;

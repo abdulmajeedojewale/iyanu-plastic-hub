@@ -334,7 +334,7 @@ export const Header: React.FC = () => {
           >
             <img
               src="/logo.png"
-              alt="WATERLORD Brand Logo"
+              alt="IYANU PLASTIC STORE Logo"
               style={{
                 width: '48px',
                 height: '48px',
@@ -356,7 +356,7 @@ export const Header: React.FC = () => {
                 alignItems: 'center',
                 gap: '6px'
               }}>
-                WATERLORD <span style={{ color: '#0f766e' }}>STORE</span>
+                IYANU <span style={{ color: '#0f766e' }}>PLASTIC STORE</span>
                 <span style={{
                   background: '#ccfbf1',
                   color: '#0f766e',
@@ -365,7 +365,7 @@ export const Header: React.FC = () => {
                   borderRadius: '4px',
                   fontWeight: 800
                 }}>
-                  PLASTIC HUB
+                  OFFICIAL
                 </span>
               </div>
               <div style={{

@@ -94,7 +94,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
             marginBottom: '28px',
             fontWeight: 400
           }}>
-            From balloons, animated & ordinary buckets, bowls, PET bottles and packaging to heavy-duty 120L waste bins and commercial furniture. Factory prices, verified polymer durability, guaranteed delivery.
+            From calibrated &amp; ordinary buckets, bowls, PET bottles and packaging to heavy-duty industrial drums, mobile waste bins and durable furniture. Factory prices, verified polymer durability, guaranteed delivery.
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
@@ -125,7 +125,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
 
             <button
               onClick={() => {
-                setSelectedCategory('pet-bottles');
+                setSelectedCategory('plastic-products');
                 setActiveView('catalog');
               }}
               style={{
@@ -140,7 +140,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = () => {
                 backdropFilter: 'blur(8px)'
               }}
             >
-              Shop Hub 1 PET Packaging & Drums
+              Shop Storage Drums &amp; Plastics
             </button>
           </div>
         </div>

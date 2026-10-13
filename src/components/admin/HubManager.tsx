@@ -84,7 +84,7 @@ export const HubManager: React.FC = () => {
     iconName: 'Boxes',
     description: '',
     assignedOpId: 'op-1',
-    image: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=600&q=80'
+    image: 'https://www.iyanuplasticstores.com/web/image/product.template/12333/image_512/%5BP124%5D%20P124%20-%2015L%20Bucket%20HF?unique=3fc1fe9'
   });
 
   const selectedHub = hubs.find(h => h.id === selectedHubId) || hubs[0];
@@ -162,7 +162,7 @@ export const HubManager: React.FC = () => {
       iconName: 'Boxes',
       description: '',
       assignedOpId: 'op-1',
-      image: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=600&q=80'
+      image: 'https://www.iyanuplasticstores.com/web/image/product.template/12333/image_512/%5BP124%5D%20P124%20-%2015L%20Bucket%20HF?unique=3fc1fe9'
     });
   };
 

@@ -67,6 +67,7 @@ export interface Product {
   minAlertThreshold?: number; // Minimum safe threshold before low stock trigger
   availability?: ProductAvailability;
   isPublished?: boolean; // When false, hidden from customer storefront
+  isArchived?: boolean; // When true, safely archived and hidden from public catalog
   isFeatured?: boolean;
   isBestseller?: boolean;
   isNewArrival?: boolean;

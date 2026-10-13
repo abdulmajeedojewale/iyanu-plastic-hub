@@ -89,6 +89,9 @@ interface AppContextType {
   addProduct: (product: Omit<Product, 'id' | 'rating' | 'reviewCount'>) => Product;
   updateProduct: (id: string, updates: Partial<Product>) => void;
   toggleProductPublished: (id: string) => void;
+  toggleProductArchived: (id: string) => void;
+  archiveProduct: (id: string) => void;
+  unarchiveProduct: (id: string) => void;
   deleteProduct: (id: string) => void;
   updateStock: (productId: string, newStock: number, variantId?: string) => void;
 
@@ -199,33 +202,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [categories, setCategories] = useState<Category[]>(() => {
-    const saved = localStorage.getItem('iyanu_categories_v2');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+    const saved = localStorage.getItem('iyanu_categories_v3');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some((c: Category) => c.image?.includes('unsplash.com'))) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_CATEGORIES;
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('iyanu_products_v2');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+    const saved = localStorage.getItem('iyanu_products_v3');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some((p: Product) => p.images?.some(img => img.includes('unsplash.com')))) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_PRODUCTS;
   });
 
   const [slmUnits, setSlmUnits] = useState<SLMUnit[]>(() => {
-    const saved = localStorage.getItem('iyanu_slm_units_v2');
+    const saved = localStorage.getItem('iyanu_slm_units_v3');
     return saved ? JSON.parse(saved) : INITIAL_SLM_UNITS;
   });
 
   const [requisitions, setRequisitions] = useState<GoodsRequisition[]>(() => {
-    const saved = localStorage.getItem('iyanu_requisitions_v2');
-    return saved ? JSON.parse(saved) : INITIAL_REQUISITIONS;
+    const saved = localStorage.getItem('iyanu_requisitions_v3');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some((r: GoodsRequisition) => r.items?.some(it => it.image?.includes('unsplash.com')))) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_REQUISITIONS;
   });
 
   const [lowStockAlerts, setLowStockAlerts] = useState<LowStockAlert[]>(() => {
-    const saved = localStorage.getItem('iyanu_low_stock_alerts_v2');
+    const saved = localStorage.getItem('iyanu_low_stock_alerts_v3');
     return saved ? JSON.parse(saved) : INITIAL_LOW_STOCK_ALERTS;
   });
 
   const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('iyanu_orders_v2');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    const saved = localStorage.getItem('iyanu_orders_v3');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && !parsed.some((o: Order) => o.items?.some(it => it.image?.includes('unsplash.com')))) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_ORDERS;
   });
 
   const [leads, setLeads] = useState<CRMLead[]>(() => {
@@ -278,7 +313,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   // Derived published products list for customer storefront (Single Source of Truth)
-  const publishedProducts = products.filter(p => p.isPublished !== false);
+  const publishedProducts = products.filter(p => p.isPublished !== false && p.isArchived !== true);
 
   // Sync to localStorage
   useEffect(() => {
@@ -286,27 +321,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [hubs]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_categories_v2', JSON.stringify(categories));
+    localStorage.setItem('iyanu_categories_v3', JSON.stringify(categories));
   }, [categories]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_products_v2', JSON.stringify(products));
+    localStorage.setItem('iyanu_products_v3', JSON.stringify(products));
   }, [products]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_slm_units_v2', JSON.stringify(slmUnits));
+    localStorage.setItem('iyanu_slm_units_v3', JSON.stringify(slmUnits));
   }, [slmUnits]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_requisitions_v2', JSON.stringify(requisitions));
+    localStorage.setItem('iyanu_requisitions_v3', JSON.stringify(requisitions));
   }, [requisitions]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_low_stock_alerts_v2', JSON.stringify(lowStockAlerts));
+    localStorage.setItem('iyanu_low_stock_alerts_v3', JSON.stringify(lowStockAlerts));
   }, [lowStockAlerts]);
 
   useEffect(() => {
-    localStorage.setItem('iyanu_orders_v2', JSON.stringify(orders));
+    localStorage.setItem('iyanu_orders_v3', JSON.stringify(orders));
   }, [orders]);
 
   useEffect(() => {
@@ -727,6 +762,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             isPublished ? 'Product Published' : 'Product Unpublished',
             isPublished ? `${p.name} is now visible on the storefront.` : `${p.name} removed from customer storefront.`
           );
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
+  const toggleProductArchived = (id: string) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === id) {
+          const isArchived = !p.isArchived;
+          const updated: Product = { ...p, isArchived, updatedAt: new Date().toISOString() };
+          syncService.syncProduct(updated);
+          addToast(
+            'info',
+            isArchived ? 'Product Archived' : 'Product Restored',
+            isArchived ? `${p.name} archived and hidden from public catalog.` : `${p.name} restored from archive.`
+          );
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
+  const archiveProduct = (id: string) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === id) {
+          const updated: Product = { ...p, isArchived: true, updatedAt: new Date().toISOString() };
+          syncService.syncProduct(updated);
+          addToast('info', 'Product Archived', `${p.name} moved to archive.`);
+          return updated;
+        }
+        return p;
+      })
+    );
+  };
+
+  const unarchiveProduct = (id: string) => {
+    setProducts(prev =>
+      prev.map(p => {
+        if (p.id === id) {
+          const updated: Product = { ...p, isArchived: false, updatedAt: new Date().toISOString() };
+          syncService.syncProduct(updated);
+          addToast('info', 'Product Restored', `${p.name} restored from archive.`);
           return updated;
         }
         return p;
@@ -1633,6 +1715,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addProduct,
         updateProduct,
         toggleProductPublished,
+        toggleProductArchived,
+        archiveProduct,
+        unarchiveProduct,
         deleteProduct,
         updateStock,
         slmUnits,

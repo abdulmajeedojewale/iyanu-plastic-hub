@@ -83,7 +83,7 @@ export const ContactView: React.FC = () => {
               letterSpacing: '0.08em'
             }}
           >
-            WATERLORD — Iyanu Plastic Stores Nig. Ents.
+            IYANU PLASTIC STORE
           </span>
           <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '8px', marginBottom: '12px' }}>
             Contact Us
@@ -117,7 +117,7 @@ export const ContactView: React.FC = () => {
               Official Business Details
             </h3>
             <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '28px' }}>
-              Iyanu Plastic Stores Nig. Ents. — Retail & Wholesale Plastic Solutions
+              Iyanu Plastic Store — Retail & Wholesale Plastic Solutions
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

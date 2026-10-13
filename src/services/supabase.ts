@@ -200,6 +200,89 @@ export const authService = {
 };
 
 /**
+ * Image Upload Service
+ * Handles product image uploads via Supabase Storage bucket or falls back to URL-based images
+ */
+export const imageUploadService = {
+  /**
+   * Upload a product image file to Supabase Storage.
+   * Returns the public URL if successful, or null if storage is not configured.
+   */
+  async uploadProductImage(file: File, productId?: string): Promise<{ url: string | null; error: string | null }> {
+    // Validate file type
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return { url: null, error: `Unsupported image format: ${file.type}. Allowed: JPEG, PNG, WebP, GIF, SVG.` };
+    }
+
+    // Validate file size (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return { url: null, error: `Image too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum: 5MB.` };
+    }
+
+    if (!isSupabaseConfigured) {
+      // Offline mode: create a local object URL for preview
+      const localUrl = URL.createObjectURL(file);
+      return { url: localUrl, error: null };
+    }
+
+    try {
+      // Generate a unique path for the image
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const timestamp = Date.now();
+      const safeName = (productId || 'new').replace(/[^a-zA-Z0-9-_]/g, '_');
+      const path = `products/${safeName}/${timestamp}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from('product-images')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type
+        });
+
+      if (error) {
+        console.warn('Supabase storage upload error:', error.message);
+        // Fall back to local object URL
+        const localUrl = URL.createObjectURL(file);
+        return { url: localUrl, error: null };
+      }
+
+      // Get public URL
+      const { data: publicData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(data.path);
+
+      return { url: publicData.publicUrl, error: null };
+    } catch (err: any) {
+      console.warn('Image upload error, using local fallback:', err.message);
+      const localUrl = URL.createObjectURL(file);
+      return { url: localUrl, error: null };
+    }
+  },
+
+  /**
+   * Delete a product image from Supabase Storage
+   */
+  async deleteProductImage(imageUrl: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      // Extract path from URL
+      const url = new URL(imageUrl);
+      const pathMatch = url.pathname.match(/product-images\/(.+)/);
+      if (pathMatch) {
+        await supabase.storage
+          .from('product-images')
+          .remove([pathMatch[1]]);
+      }
+    } catch (err) {
+      console.warn('Image delete warning:', err);
+    }
+  }
+};
+
+/**
  * Database Sync Helper
  * Used to mirror updates to Supabase tables when credentials are active
  */
@@ -227,6 +310,7 @@ export const syncService = {
         op_stock: product.opStock,
         min_alert_threshold: product.minAlertThreshold,
         is_published: product.isPublished !== false,
+        is_archived: product.isArchived === true,
         is_featured: Boolean(product.isFeatured),
         is_bestseller: Boolean(product.isBestseller),
         is_new_arrival: Boolean(product.isNewArrival),

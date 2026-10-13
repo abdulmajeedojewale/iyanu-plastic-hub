@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from './context/AppContext';
+import { useApp, AppProvider } from './context/AppContext';
 import { Header } from './components/Header';
 import { ToastContainer } from './components/ToastContainer';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -109,7 +109,7 @@ const MainContent: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
                 <img
                   src="/logo.png"
-                  alt="WATERLORD Logo"
+                  alt="IYANU PLASTIC STORE Logo"
                   style={{
                     width: '44px',
                     height: '44px',
@@ -120,11 +120,11 @@ const MainContent: React.FC = () => {
                   }}
                 />
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0 }}>
-                  WATERLORD <span style={{ color: '#2dd4bf' }}>PLASTIC</span> STORES
+                  IYANU <span style={{ color: '#2dd4bf' }}>PLASTIC</span> STORE
                 </h3>
               </div>
               <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-                Waterlord (Iyanu Plastic Stores Nig. Ents.) — Leading retail &amp; wholesale establishment for durable household products, calibrated buckets, plastic furniture, waste bins, and industrial drums.
+                Iyanu Plastic Store — Leading retail &amp; wholesale establishment for durable household products, calibrated buckets, plastic furniture, waste bins, and industrial drums.
               </p>
               <div style={{ fontSize: '0.8rem', color: '#2dd4bf', fontWeight: 600 }}>
                 Est. 2008 • Reg. 2012 • Registered Enterprise
